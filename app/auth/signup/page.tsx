@@ -1,12 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 export default function SignupPage() {
-  const router = useRouter()
   const supabase = createClient()
 
   const [fullName, setFullName] = useState('')
@@ -32,7 +30,7 @@ export default function SignupPage() {
 
     setLoading(true)
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -46,7 +44,24 @@ export default function SignupPage() {
       return
     }
 
-    router.push('/')
+    // If Supabase requires email confirmation, session won't exist yet
+    if (!signUpData.session) {
+      setError('Please check your email to confirm your account, then sign in to subscribe.')
+      setLoading(false)
+      return
+    }
+
+    // Session exists — go straight to Stripe checkout
+    const res = await fetch('/api/vault/create-checkout', { method: 'POST' })
+    const body = await res.json()
+
+    if (!res.ok || !body.url) {
+      setError(body.error ?? 'Could not start checkout. Please sign in and try again.')
+      setLoading(false)
+      return
+    }
+
+    window.location.href = body.url
   }
 
   return (
