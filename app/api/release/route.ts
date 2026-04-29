@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { sendReleaseRequestAlert } from '@/lib/email'
 
 export async function POST(request: Request) {
   const formData = await request.formData()
@@ -79,33 +80,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to save your request. Please try again.' }, { status: 500 })
   }
 
-  // Notify admin via email (best-effort)
+  // Notify admin via email (best-effort — request is saved regardless)
   try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Antim Vault <noreply@antim.services>',
-        to: 'hello@antim.services',
-        subject: `New vault release request — ${deceasedName}`,
-        text: [
-          `A new vault release request has been submitted.`,
-          ``,
-          `Deceased: ${deceasedName} (${deceasedEmail})`,
-          `Requested by: ${yourName} (${relationship})`,
-          `Contact: ${yourEmail} | ${yourPhone}`,
-          `Note: ${note || '(none)'}`,
-          `Vault found: ${vaultId ? 'Yes' : 'No — email not registered'}`,
-          ``,
-          `Review at: ${process.env.NEXT_PUBLIC_APP_URL}/admin`,
-        ].join('\n'),
-      }),
+    await sendReleaseRequestAlert({
+      deceasedName: deceasedName!,
+      deceasedEmail: deceasedEmail!,
+      requestedByName: yourName!,
+      requestedByEmail: yourEmail!,
+      requestedByPhone: yourPhone!,
+      relationship: relationship!,
+      note,
+      vaultFound: !!vaultId,
     })
   } catch {
-    // Non-fatal — request is saved, notification failure should not block response
+    // Non-fatal
   }
 
   return NextResponse.json({ success: true })

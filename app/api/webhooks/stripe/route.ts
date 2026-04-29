@@ -2,6 +2,7 @@ import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -83,6 +84,20 @@ export async function POST(request: NextRequest) {
           console.error('[stripe-webhook] supabase upsert error:', error.message)
         } else {
           console.log('[stripe-webhook] vault upserted successfully for user:', userId)
+
+          // Send welcome email (best-effort — do not block the webhook response)
+          try {
+            const { data: { user: vaultUser } } = await supabase.auth.admin.getUserById(userId)
+            if (vaultUser?.email) {
+              const firstName = (vaultUser.user_metadata?.full_name as string | undefined)
+                ?.split(' ')[0] ?? 'there'
+              await sendWelcomeEmail(vaultUser.email, firstName)
+              console.log('[stripe-webhook] welcome email sent to:', vaultUser.email)
+            }
+          } catch (emailErr) {
+            const msg = emailErr instanceof Error ? emailErr.message : String(emailErr)
+            console.error('[stripe-webhook] welcome email failed (non-fatal):', msg)
+          }
         }
         break
       }
