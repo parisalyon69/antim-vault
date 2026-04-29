@@ -51,7 +51,7 @@ export async function proxy(request: NextRequest) {
           .single()
 
         if (!vault || vault.subscription_status !== 'active') {
-          return NextResponse.redirect(new URL('/', request.url))
+          return NextResponse.redirect(new URL('/subscribe', request.url))
         }
       }
     }
