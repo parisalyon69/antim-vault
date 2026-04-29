@@ -24,7 +24,6 @@ export async function POST() {
     success_url: `${process.env.NEXT_PUBLIC_APP_URL}/vault?success=true`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}`,
     metadata: { userId: user.id },
-    currency: 'inr',
   })
 
   return NextResponse.json({ url: session.url })

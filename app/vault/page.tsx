@@ -17,7 +17,29 @@ export default async function VaultDashboard() {
     .eq('user_id', user.id)
     .single()
 
-  if (!vault) return null
+  // Middleware lets ?success=true through before the webhook fires.
+  // Show an activating screen; user can refresh once the vault row exists.
+  if (!vault) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+        <h1
+          className="text-2xl font-semibold text-[#1a1a1a] mb-3"
+          style={{ fontFamily: 'var(--font-lora, Lora, Georgia, serif)' }}
+        >
+          Activating your vault…
+        </h1>
+        <p className="text-[#6b7280] text-sm max-w-xs leading-relaxed">
+          Your payment was received. We&apos;re setting up your vault — this usually takes a few seconds.
+        </p>
+        <a
+          href="/vault"
+          className="mt-6 text-sm text-[#1a1a1a] underline underline-offset-2"
+        >
+          Refresh to continue →
+        </a>
+      </div>
+    )
+  }
 
   const [
     { count: assetCount },

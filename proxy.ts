@@ -37,6 +37,24 @@ export async function proxy(request: NextRequest) {
       loginUrl.searchParams.set('next', pathname)
       return NextResponse.redirect(loginUrl)
     }
+
+    // Check active subscription for /vault routes.
+    // Exception: let ?success=true through so the vault page can show
+    // an "activating" state while the Stripe webhook fires asynchronously.
+    if (pathname.startsWith('/vault')) {
+      const isPostPayment = request.nextUrl.searchParams.get('success') === 'true'
+      if (!isPostPayment) {
+        const { data: vault } = await supabase
+          .from('vaults')
+          .select('subscription_status')
+          .eq('user_id', user.id)
+          .single()
+
+        if (!vault || vault.subscription_status !== 'active') {
+          return NextResponse.redirect(new URL('/', request.url))
+        }
+      }
+    }
   }
 
   // /release is public — no protection needed
