@@ -50,7 +50,7 @@ export async function proxy(request: NextRequest) {
           .eq('user_id', user.id)
           .single()
 
-        if (!vault || vault.subscription_status !== 'active') {
+        if (!vault || (vault.subscription_status !== 'active' && vault.subscription_status !== 'past_due')) {
           return NextResponse.redirect(new URL('/subscribe', request.url))
         }
       }

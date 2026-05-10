@@ -34,15 +34,10 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
     return <ErrorPage message="This link has expired. Please contact hello@antim.services." />
   }
 
-  // Mark token as used
-  await supabase
-    .from('vault_release_tokens')
-    .update({ used: true })
-    .eq('id', releaseToken.id)
-
   const vaultId = releaseToken.vault_id
 
-  // Fetch vault data
+  // Fetch vault data before consuming the token — if this fails the
+  // nominee can reload and try again with the same (still-valid) token.
   const [
     { data: assets },
     { data: documents },
@@ -54,6 +49,13 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
     supabase.from('vault_nominees').select('*').eq('vault_id', vaultId),
     supabase.from('vault_letters').select('encrypted_content').eq('vault_id', vaultId).single(),
   ])
+
+  // Mark token as used only after we have the data — prevents the token
+  // from being consumed if the data fetch fails mid-way.
+  await supabase
+    .from('vault_release_tokens')
+    .update({ used: true })
+    .eq('id', releaseToken.id)
 
   // Generate download URLs for documents (24hr)
   const docsWithUrls = await Promise.all(

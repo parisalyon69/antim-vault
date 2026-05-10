@@ -30,11 +30,20 @@ export async function POST(request: Request) {
 
   const supabase = await createServiceClient()
 
-  // Look up the vault by deceased email (via auth user lookup)
-  const { data: authUsers } = await supabase.auth.admin.listUsers()
-  const matchedUser = authUsers?.users?.find(
-    (u) => u.email?.toLowerCase() === deceasedEmail
-  )
+  // Look up the vault by deceased email — paginate through auth users until found
+  let matchedUser: { id: string } | null = null
+  {
+    let page = 1
+    const perPage = 1000
+    while (true) {
+      const { data } = await supabase.auth.admin.listUsers({ page, perPage })
+      if (!data?.users?.length) break
+      const found = data.users.find((u) => u.email?.toLowerCase() === deceasedEmail)
+      if (found) { matchedUser = found; break }
+      if (data.users.length < perPage) break // last page reached
+      page++
+    }
+  }
 
   let vaultId: string | null = null
   if (matchedUser) {

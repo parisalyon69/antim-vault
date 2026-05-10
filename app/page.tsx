@@ -149,10 +149,10 @@ export default function HomePage() {
             <a href="https://antim.services" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
               antim.services
             </a>
-            <a href="https://antim.services/faq.html" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
+            <a href="https://antim.services/faq" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
               FAQ
             </a>
-            <a href="https://antim.services/privacy-policy.html" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
+            <a href="https://antim.services/privacy-policy" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
               Privacy Policy
             </a>
             <Link href="/release" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
