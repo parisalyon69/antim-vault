@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { VaultReleaseRequest } from '@/lib/types'
+import { ADMIN_EMAIL } from '@/lib/constants'
 
 type RequestWithCertUrl = VaultReleaseRequest & { cert_url?: string }
 
@@ -23,7 +24,7 @@ export default function AdminPage() {
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user || user.email !== 'hello@antim.services') {
+    if (!user || user.email !== ADMIN_EMAIL) {
       router.replace('/')
       return
     }

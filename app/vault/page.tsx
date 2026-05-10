@@ -3,6 +3,7 @@ import Link from 'next/link'
 import CompletenessScore from '@/components/vault/CompletenessScore'
 import { calculateCompleteness } from '@/lib/vault/completeness'
 import { VaultActivating } from './activating'
+import { VAULT_PLAN_LABEL } from '@/lib/constants'
 
 export default async function VaultDashboard() {
   const supabase = await createClient()
@@ -14,7 +15,7 @@ export default async function VaultDashboard() {
 
   const { data: vault } = await supabase
     .from('vaults')
-    .select('id, updated_at')
+    .select('id, updated_at, subscription_status')
     .eq('user_id', user.id)
     .single()
 
@@ -25,12 +26,13 @@ export default async function VaultDashboard() {
   }
 
   const [
-    { count: assetCount },
-    { count: documentCount },
-    { count: nomineeCount },
-    { data: letter },
+    { count: assetCount, error: assetErr },
+    { count: documentCount, error: docErr },
+    { count: nomineeCount, error: nomineeErr },
+    { data: letter, error: letterErr },
     { data: bankAssets },
     { data: insuranceAssets },
+    { data: lastTokenData, error: lastTokenErr },
   ] = await Promise.all([
     supabase.from('vault_assets').select('*', { count: 'exact', head: true }).eq('vault_id', vault.id),
     supabase.from('vault_documents').select('*', { count: 'exact', head: true }).eq('vault_id', vault.id),
@@ -38,7 +40,22 @@ export default async function VaultDashboard() {
     supabase.from('vault_letters').select('id').eq('vault_id', vault.id).maybeSingle(),
     supabase.from('vault_assets').select('id').eq('vault_id', vault.id).eq('category', 'bank_account').limit(1),
     supabase.from('vault_assets').select('id').eq('vault_id', vault.id).eq('category', 'insurance_policy').limit(1),
+    supabase
+      .from('vault_release_tokens')
+      .select('accessed_at')
+      .eq('vault_id', vault.id)
+      .eq('used', true)
+      .not('accessed_at', 'is', null)
+      .order('accessed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
+
+  if (assetErr) console.error('[vault/dashboard] vault_assets query:', assetErr.message)
+  if (docErr) console.error('[vault/dashboard] vault_documents query:', docErr.message)
+  if (nomineeErr) console.error('[vault/dashboard] vault_nominees query:', nomineeErr.message)
+  if (letterErr) console.error('[vault/dashboard] vault_letters query:', letterErr.message)
+  if (lastTokenErr) console.error('[vault/dashboard] vault_release_tokens query:', lastTokenErr.message)
 
   const scoreData = {
     nomineeCount: nomineeCount ?? 0,
@@ -53,6 +70,14 @@ export default async function VaultDashboard() {
 
   const lastUpdated = vault.updated_at
     ? new Date(vault.updated_at).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : null
+
+  const lastAccessed = lastTokenData?.accessed_at
+    ? new Date(lastTokenData.accessed_at).toLocaleDateString('en-IN', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -88,12 +113,21 @@ export default async function VaultDashboard() {
 
   return (
     <div style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>
-      <h1 className="text-2xl font-semibold text-[#1a1a1a] mb-1" style={{ fontFamily: 'var(--font-lora, Lora, Georgia, serif)' }}>
-        Your vault, {firstName}
-      </h1>
+      <div className="flex flex-wrap items-start justify-between gap-2 mb-1">
+        <h1 className="text-2xl font-semibold text-[#1a1a1a]" style={{ fontFamily: 'var(--font-lora, Lora, Georgia, serif)' }}>
+          Your vault, {firstName}
+        </h1>
+        <span className="text-xs font-medium px-2.5 py-1 rounded-full border bg-[#f0fdf4] text-[#15803d] border-[#bbf7d0]">
+          {VAULT_PLAN_LABEL}
+        </span>
+      </div>
       {lastUpdated && (
-        <p className="text-sm text-[#6b7280] mb-8">Last updated {lastUpdated}</p>
+        <p className="text-sm text-[#6b7280] mb-1">Last updated {lastUpdated}</p>
       )}
+      {lastAccessed && (
+        <p className="text-xs text-[#9ca3af] mb-8">Last accessed by nominee: {lastAccessed}</p>
+      )}
+      {!lastAccessed && lastUpdated && <div className="mb-8" />}
 
       <div className="mb-10">
         <CompletenessScore {...scoreData} />

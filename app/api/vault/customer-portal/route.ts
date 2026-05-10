@@ -21,10 +21,15 @@ export async function POST() {
     return NextResponse.json({ error: 'No Stripe customer found' }, { status: 404 })
   }
 
-  const session = await stripe.billingPortal.sessions.create({
-    customer: vault.stripe_customer_id,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/vault/settings`,
-  })
-
-  return NextResponse.json({ url: session.url })
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: vault.stripe_customer_id,
+      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/vault/settings`,
+    })
+    return NextResponse.json({ url: session.url })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[customer-portal] Stripe error:', message)
+    return NextResponse.json({ error: 'Could not open billing portal. Please try again.' }, { status: 500 })
+  }
 }

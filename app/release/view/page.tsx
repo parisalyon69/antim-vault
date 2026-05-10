@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ASSET_CATEGORY_LABELS, DOCUMENT_CATEGORY_LABELS } from '@/lib/types'
+import { ADMIN_EMAIL, WHATSAPP_URL, WHATSAPP_DISPLAY } from '@/lib/constants'
 
 interface Props {
   searchParams: Promise<{ token?: string }>
@@ -23,7 +24,7 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
     .single()
 
   if (!releaseToken) {
-    return <ErrorPage message="This link is invalid or has expired." />
+    return <ErrorPage message="This link is invalid." />
   }
 
   if (releaseToken.used) {
@@ -31,7 +32,7 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
   }
 
   if (new Date(releaseToken.expires_at) < new Date()) {
-    return <ErrorPage message="This link has expired. Please contact hello@antim.services." />
+    return <ErrorPage message={`This link has expired. Please contact ${ADMIN_EMAIL}.`} />
   }
 
   const vaultId = releaseToken.vault_id
@@ -54,7 +55,7 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
   // from being consumed if the data fetch fails mid-way.
   await supabase
     .from('vault_release_tokens')
-    .update({ used: true })
+    .update({ used: true, accessed_at: new Date().toISOString() })
     .eq('id', releaseToken.id)
 
   // Generate download URLs for documents (24hr)
@@ -139,12 +140,16 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
           </section>
         )}
 
-        {/* Documents */}
-        {docsWithUrls.length > 0 && (
-          <section className="mb-10">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-[#6b7280] mb-4">
-              Documents
-            </h2>
+        {/* Documents — always rendered so the section is never silently absent */}
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[#6b7280] mb-4">
+            Documents
+          </h2>
+          {docsWithUrls.length === 0 ? (
+            <div className="border border-[#e5e7eb] rounded-lg px-5 py-6 text-sm text-[#9ca3af]">
+              No documents have been uploaded to this vault yet.
+            </div>
+          ) : (
             <div className="border border-[#e5e7eb] rounded-lg divide-y divide-[#e5e7eb]">
               {docsWithUrls.map((doc) => (
                 <div key={doc.id} className="px-5 py-4 flex items-center justify-between gap-4">
@@ -170,8 +175,8 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
                 </div>
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* Letter — encrypted, shown as notice */}
         {letter?.encrypted_content && (
@@ -182,8 +187,8 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
             <div className="border border-[#e5e7eb] rounded-lg px-5 py-4">
               <p className="text-sm text-[#6b7280]">
                 A personal letter has been left for you. To read it, contact{' '}
-                <a href="mailto:hello@antim.services" className="text-[#1a1a1a] underline underline-offset-2">
-                  hello@antim.services
+                <a href={`mailto:${ADMIN_EMAIL}`} className="text-[#1a1a1a] underline underline-offset-2">
+                  {ADMIN_EMAIL}
                 </a>
                 {' '}with this reference: <span className="font-mono text-xs">{vaultId.slice(0, 8)}</span>.
               </p>
@@ -200,12 +205,12 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
         <div className="mt-10 pt-6 border-t border-[#e5e7eb] text-center">
           <p className="text-sm text-[#6b7280]">
             Questions? Contact us at{' '}
-            <a href="mailto:hello@antim.services" className="text-[#1a1a1a] underline underline-offset-2">
-              hello@antim.services
+            <a href={`mailto:${ADMIN_EMAIL}`} className="text-[#1a1a1a] underline underline-offset-2">
+              {ADMIN_EMAIL}
             </a>
             {' '}or{' '}
-            <a href="https://wa.me/33745722899" className="text-[#1a1a1a] underline underline-offset-2">
-              WhatsApp +33 7 45 72 28 99
+            <a href={WHATSAPP_URL} className="text-[#1a1a1a] underline underline-offset-2">
+              WhatsApp {WHATSAPP_DISPLAY}
             </a>
           </p>
         </div>
@@ -230,8 +235,8 @@ function ErrorPage({ message }: { message: string }) {
           <p className="text-sm text-[#6b7280] mb-6">{message}</p>
           <p className="text-sm text-[#6b7280]">
             For help, email{' '}
-            <a href="mailto:hello@antim.services" className="text-[#1a1a1a] underline underline-offset-2">
-              hello@antim.services
+            <a href={`mailto:${ADMIN_EMAIL}`} className="text-[#1a1a1a] underline underline-offset-2">
+              {ADMIN_EMAIL}
             </a>
           </p>
         </div>

@@ -162,3 +162,12 @@ CREATE POLICY "own files only - delete"
 -- 1. vault-documents  (private, 10MB max, pdf/jpg/png/webp)
 -- 2. release-documents (private, 10MB max, admin only)
 -- ============================================================
+
+-- ============================================================
+-- MIGRATIONS — run after initial schema is applied
+-- ============================================================
+
+-- v1: Track when a nominee actually opened the vault via a release link.
+-- Displayed as "Last accessed by nominee" on the vault dashboard.
+ALTER TABLE vault_release_tokens
+  ADD COLUMN IF NOT EXISTS accessed_at TIMESTAMPTZ;

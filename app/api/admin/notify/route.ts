@@ -1,12 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendReleaseApprovedEmail, sendReleaseRejectedEmail } from '@/lib/email'
+import { ADMIN_EMAIL } from '@/lib/constants'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user || user.email !== 'hello@antim.services') {
+  if (!user || user.email !== ADMIN_EMAIL) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

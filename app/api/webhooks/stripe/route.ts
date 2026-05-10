@@ -52,6 +52,11 @@ export async function POST(request: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session
         const userId = session.metadata?.userId
         console.log('[stripe-webhook] checkout.session.completed — userId:', userId)
+
+        if (!session.customer_email) {
+          console.warn('[stripe-webhook] checkout.session.completed — customer_email absent in session; welcome email will use auth record instead')
+        }
+
         if (!userId) {
           console.error('[stripe-webhook] no userId in session metadata')
           break
