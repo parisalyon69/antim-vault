@@ -37,22 +37,30 @@ export async function proxy(request: NextRequest) {
       loginUrl.searchParams.set('next', pathname)
       return NextResponse.redirect(loginUrl)
     }
+  }
 
-    // Check active subscription for /vault routes.
-    // Exception: let ?success=true through so the vault page can show
-    // an "activating" state while the Stripe webhook fires asynchronously.
-    if (pathname.startsWith('/vault')) {
-      const isPostPayment = request.nextUrl.searchParams.get('success') === 'true'
-      if (!isPostPayment) {
-        const { data: vault } = await supabase
-          .from('vaults')
-          .select('subscription_status')
-          .eq('user_id', user.id)
-          .single()
+  // Email verification gate — authenticated users who haven't confirmed their email
+  // are blocked from /vault/* and /subscribe until they verify.
+  if (user && !user.email_confirmed_at) {
+    if (pathname.startsWith('/vault') || pathname === '/subscribe') {
+      return NextResponse.redirect(new URL('/auth/verify-email', request.url))
+    }
+  }
 
-        if (!vault || (vault.subscription_status !== 'active' && vault.subscription_status !== 'past_due')) {
-          return NextResponse.redirect(new URL('/subscribe', request.url))
-        }
+  // Check active subscription for /vault routes.
+  // Exception: let ?success=true through so the vault page can show
+  // an "activating" state while the Stripe webhook fires asynchronously.
+  if (pathname.startsWith('/vault')) {
+    const isPostPayment = request.nextUrl.searchParams.get('success') === 'true'
+    if (!isPostPayment) {
+      const { data: vault } = await supabase
+        .from('vaults')
+        .select('subscription_status')
+        .eq('user_id', user!.id)
+        .single()
+
+      if (!vault || (vault.subscription_status !== 'active' && vault.subscription_status !== 'past_due')) {
+        return NextResponse.redirect(new URL('/subscribe', request.url))
       }
     }
   }
@@ -63,5 +71,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/vault/:path*', '/admin/:path*'],
+  matcher: ['/vault/:path*', '/admin/:path*', '/subscribe'],
 }
