@@ -14,7 +14,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vault.antim.services
 export async function sendWelcomeEmail(to: string, firstName: string) {
   return getResend().emails.send({
     from: FROM_EMAIL,
-    reply_to: ADMIN_EMAIL,
+    replyTo: ADMIN_EMAIL,
     to,
     subject: 'Your vault is ready — Antim',
     text: [
@@ -41,7 +41,7 @@ export async function sendWelcomeEmail(to: string, firstName: string) {
 export async function sendPaymentFailedEmail(to: string, firstName: string) {
   return getResend().emails.send({
     from: FROM_EMAIL,
-    reply_to: ADMIN_EMAIL,
+    replyTo: ADMIN_EMAIL,
     to,
     subject: 'Payment issue with your Antim vault — action needed',
     text: [
@@ -77,7 +77,7 @@ export async function sendReleaseRequestAlert(data: {
 }) {
   return getResend().emails.send({
     from: FROM_EMAIL,
-    reply_to: ADMIN_EMAIL,
+    replyTo: ADMIN_EMAIL,
     to: ADMIN_EMAIL,
     subject: `New vault release request — ${data.deceasedName}`,
     text: [
@@ -100,7 +100,7 @@ export async function sendReleaseRequestAlert(data: {
 export async function sendReleaseRequestAcknowledgmentEmail(to: string, nomineeName: string) {
   return getResend().emails.send({
     from: FROM_EMAIL,
-    reply_to: ADMIN_EMAIL,
+    replyTo: ADMIN_EMAIL,
     to,
     subject: "We've received your request — Antim",
     text: [
@@ -126,7 +126,7 @@ export async function sendReleaseApprovedEmail(to: string, name: string, token: 
   const accessUrl = `${APP_URL}/release/view?token=${token}`
   return getResend().emails.send({
     from: FROM_EMAIL,
-    reply_to: ADMIN_EMAIL,
+    replyTo: ADMIN_EMAIL,
     to,
     subject: 'Your vault access request has been approved — Antim',
     text: [
@@ -153,7 +153,7 @@ export async function sendReleaseApprovedEmail(to: string, name: string, token: 
 export async function sendReleaseRejectedEmail(to: string, name: string, reason?: string) {
   return getResend().emails.send({
     from: FROM_EMAIL,
-    reply_to: ADMIN_EMAIL,
+    replyTo: ADMIN_EMAIL,
     to,
     subject: 'Update on your vault access request — Antim',
     text: [
@@ -191,7 +191,7 @@ export async function sendReleaseAccessedEmail(
   })
   return getResend().emails.send({
     from: FROM_EMAIL,
-    reply_to: ADMIN_EMAIL,
+    replyTo: ADMIN_EMAIL,
     to,
     subject: 'Your vault was accessed — Antim',
     text: [
