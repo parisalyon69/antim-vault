@@ -1,8 +1,25 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendReleaseRequestAlert } from '@/lib/email'
+import { releaseIpLimiter, releaseEmailLimiter } from '@/lib/ratelimit'
 
 export async function POST(request: Request) {
+  // ── Rate limit by IP ────────────────────────────────────────────────────────
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    request.headers.get('x-real-ip') ??
+    'unknown'
+
+  if (releaseIpLimiter) {
+    const { success } = await releaseIpLimiter.limit(`release:ip:${ip}`)
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later or contact support.' },
+        { status: 429 }
+      )
+    }
+  }
+
   const formData = await request.formData()
 
   const yourName = (formData.get('yourName') as string | null)?.trim()
@@ -16,6 +33,17 @@ export async function POST(request: Request) {
 
   if (!yourName || !relationship || !deceasedName || !deceasedEmail || !yourPhone || !yourEmail || !certFile) {
     return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 })
+  }
+
+  // ── Rate limit by deceased email (cross-IP protection) ───────────────────────
+  if (releaseEmailLimiter) {
+    const { success } = await releaseEmailLimiter.limit(`release:email:${deceasedEmail}`)
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later or contact support.' },
+        { status: 429 }
+      )
+    }
   }
 
   const MAX_BYTES = 10 * 1024 * 1024
@@ -57,7 +85,6 @@ export async function POST(request: Request) {
 
   // Upload death certificate to release-documents bucket
   const timestamp = Date.now()
-  const ext = certFile.name.split('.').pop() ?? 'bin'
   const sanitizedName = certFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
   const filePath = `${yourEmail}/${timestamp}_${sanitizedName}`
 

@@ -171,3 +171,13 @@ CREATE POLICY "own files only - delete"
 -- Displayed as "Last accessed by nominee" on the vault dashboard.
 ALTER TABLE vault_release_tokens
   ADD COLUMN IF NOT EXISTS accessed_at TIMESTAMPTZ;
+
+-- v2: Stripe webhook event idempotency.
+-- Prevents duplicate processing (welcome email, vault upsert) when Stripe
+-- retries a webhook. id is the Stripe event ID (evt_xxx).
+-- No RLS needed — only ever accessed via service role key in the webhook handler.
+CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+  id           TEXT        PRIMARY KEY,
+  event_type   TEXT        NOT NULL,
+  processed_at TIMESTAMPTZ DEFAULT NOW()
+);

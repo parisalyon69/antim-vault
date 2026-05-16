@@ -32,12 +32,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Signature verification failed: ${message}` }, { status: 400 })
   }
 
-  try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+  // ── Idempotency check ──────────────────────────────────────────────────────
+  // Service-role client created here (outside the processing try/catch) so the
+  // idempotency failure path has its own explicit return with no side effects.
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
+  const { data: insertedRows, error: idempotencyError } = await supabase
+    .from('stripe_webhook_events')
+    .upsert(
+      { id: event.id, event_type: event.type },
+      { onConflict: 'id', ignoreDuplicates: true }
+    )
+    .select()
+
+  if (idempotencyError) {
+    // DB unreachable — return 500 WITHOUT processing so Stripe retries when DB recovers.
+    console.error('[stripe-webhook] idempotency insert failed:', idempotencyError.message)
+    return NextResponse.json({ error: 'Idempotency check failed' }, { status: 500 })
+  }
+
+  if (!insertedRows || insertedRows.length === 0) {
+    // Row already existed — event already processed. 200 no-op.
+    return NextResponse.json({ received: true })
+  }
+
+  // Row was freshly inserted — first time seeing this event. Proceed.
+
+  try {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session

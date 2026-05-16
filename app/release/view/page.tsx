@@ -1,13 +1,28 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
 import Link from 'next/link'
 import { ASSET_CATEGORY_LABELS, DOCUMENT_CATEGORY_LABELS } from '@/lib/types'
 import { ADMIN_EMAIL, WHATSAPP_URL, WHATSAPP_DISPLAY } from '@/lib/constants'
+import { tokenIpLimiter } from '@/lib/ratelimit'
 
 interface Props {
   searchParams: Promise<{ token?: string }>
 }
 
 export default async function ReleaseViewPage({ searchParams }: Props) {
+  // ── Rate limit by IP ────────────────────────────────────────────────────────
+  if (tokenIpLimiter) {
+    const headersList = await headers()
+    const ip =
+      headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      headersList.get('x-real-ip') ??
+      'unknown'
+    const { success } = await tokenIpLimiter.limit(`token:ip:${ip}`)
+    if (!success) {
+      return <ErrorPage message="Too many requests. Please try again later." />
+    }
+  }
+
   const { token } = await searchParams
 
   if (!token) {
