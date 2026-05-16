@@ -131,6 +131,50 @@ export async function POST(request: NextRequest) {
         break
       }
 
+      case 'customer.subscription.updated': {
+        const sub = event.data.object as Stripe.Subscription
+        const statusMap: Record<string, string> = {
+          active: 'active',
+          past_due: 'past_due',
+          canceled: 'inactive',
+          unpaid: 'past_due',
+          trialing: 'active',
+          paused: 'inactive',
+          incomplete: 'inactive',
+          incomplete_expired: 'inactive',
+        }
+        const newStatus = statusMap[sub.status] ?? 'inactive'
+        const { data: updatedVault } = await supabase
+          .from('vaults')
+          .update({ subscription_status: newStatus, updated_at: new Date().toISOString() })
+          .eq('stripe_subscription_id', sub.id)
+          .select('id')
+          .single()
+        if (updatedVault?.id) {
+          await logActivity(supabase, updatedVault.id, 'subscription_status_changed', {
+            status: newStatus,
+            stripe_status: sub.status,
+          })
+        }
+        break
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice & {
+          subscription?: string | { id: string } | null
+        }
+        const sub = invoice.subscription
+        const subId =
+          typeof sub === 'string' ? sub : (sub as { id: string } | null)?.id ?? null
+        // Only act on renewals — checkout.session.completed handles the initial payment
+        if (!subId || invoice.billing_reason === 'subscription_create') break
+        await supabase
+          .from('vaults')
+          .update({ subscription_status: 'active', updated_at: new Date().toISOString() })
+          .eq('stripe_subscription_id', subId)
+        break
+      }
+
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription
         const { data: cancelledVault } = await supabase
