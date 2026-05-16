@@ -181,3 +181,9 @@ CREATE TABLE IF NOT EXISTS stripe_webhook_events (
   event_type   TEXT        NOT NULL,
   processed_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- v3: Allow authenticated users to write activity log entries for their own vaults.
+-- Required for client-side activity logging from vault pages (assets, documents, etc.).
+-- The SELECT policy already exists; this adds the INSERT counterpart.
+CREATE POLICY "own activity only - insert" ON vault_activity_log
+  FOR INSERT WITH CHECK (vault_id IN (SELECT id FROM vaults WHERE user_id = auth.uid()));

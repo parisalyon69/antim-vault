@@ -1,7 +1,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { sendReleaseRequestAlert } from '@/lib/email'
+import { sendReleaseRequestAlert, sendReleaseRequestAcknowledgmentEmail } from '@/lib/email'
 import { releaseIpLimiter, releaseEmailLimiter } from '@/lib/ratelimit'
+import { logActivity } from '@/lib/activity'
 
 export async function POST(request: Request) {
   // ── Rate limit by IP ────────────────────────────────────────────────────────
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
       if (!data?.users?.length) break
       const found = data.users.find((u) => u.email?.toLowerCase() === deceasedEmail)
       if (found) { matchedUser = found; break }
-      if (data.users.length < perPage) break // last page reached
+      if (data.users.length < perPage) break
       page++
     }
   }
@@ -116,20 +117,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to save your request. Please try again.' }, { status: 500 })
   }
 
-  // Notify admin via email (best-effort — request is saved regardless)
-  try {
-    await sendReleaseRequestAlert({
-      deceasedName: deceasedName!,
-      deceasedEmail: deceasedEmail!,
-      requestedByName: yourName!,
-      requestedByEmail: yourEmail!,
-      requestedByPhone: yourPhone!,
-      relationship: relationship!,
-      note,
-      vaultFound: !!vaultId,
+  // Log activity on the vault (if found)
+  if (vaultId) {
+    await logActivity(supabase, vaultId, 'release_request_submitted', {
+      requested_by: yourName,
+      requested_by_email: yourEmail,
     })
-  } catch {
-    // Non-fatal
+  }
+
+  // Notify admin — if this fails, surface a warning but keep the 200
+  const { error: alertError } = await sendReleaseRequestAlert({
+    deceasedName: deceasedName!,
+    deceasedEmail: deceasedEmail!,
+    requestedByName: yourName!,
+    requestedByEmail: yourEmail!,
+    requestedByPhone: yourPhone!,
+    relationship: relationship!,
+    note,
+    vaultFound: !!vaultId,
+  })
+  if (alertError) {
+    console.error('[release] admin alert email failed:', alertError)
+    return NextResponse.json({ success: true, warning: 'admin_notification_failed' })
+  }
+
+  // Acknowledge receipt to nominee (best-effort — request is saved regardless)
+  try {
+    await sendReleaseRequestAcknowledgmentEmail(yourEmail!, yourName!)
+  } catch (ackErr) {
+    const msg = ackErr instanceof Error ? ackErr.message : String(ackErr)
+    console.error('[release] nominee acknowledgment email failed (non-fatal):', msg)
   }
 
   return NextResponse.json({ success: true })
