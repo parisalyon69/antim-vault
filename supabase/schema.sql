@@ -182,6 +182,15 @@ CREATE TABLE IF NOT EXISTS stripe_webhook_events (
   processed_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- v4: Direct email-to-user-id lookup for vault release requests.
+-- Replaces the paginated listUsers loop in /api/release with a single indexed query.
+-- SECURITY DEFINER runs as the postgres superuser so it can read auth.users,
+-- which is otherwise inaccessible to the service role via the JS client.
+CREATE OR REPLACE FUNCTION get_user_id_by_email(p_email TEXT)
+RETURNS UUID LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
+  SELECT id FROM auth.users WHERE email = p_email LIMIT 1;
+$$;
+
 -- v3: Allow authenticated users to write activity log entries for their own vaults.
 -- Required for client-side activity logging from vault pages (assets, documents, etc.).
 -- The SELECT policy already exists; this adds the INSERT counterpart.
