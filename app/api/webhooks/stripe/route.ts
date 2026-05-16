@@ -2,7 +2,8 @@ import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { sendWelcomeEmail } from '@/lib/email'
+import { sendWelcomeEmail, sendPaymentFailedEmail } from '@/lib/email'
+import { logActivity } from '@/lib/activity'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -114,16 +115,35 @@ export async function POST(request: NextRequest) {
             const msg = emailErr instanceof Error ? emailErr.message : String(emailErr)
             console.error('[stripe-webhook] welcome email failed (non-fatal):', msg)
           }
+
+          // Log vault activation
+          const { data: newVault } = await supabase
+            .from('vaults')
+            .select('id')
+            .eq('user_id', userId)
+            .single()
+          if (newVault?.id) {
+            await logActivity(supabase, newVault.id, 'vault_activated', {
+              stripe_customer_id: customerId,
+            })
+          }
         }
         break
       }
 
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription
-        await supabase
+        const { data: cancelledVault } = await supabase
           .from('vaults')
           .update({ subscription_status: 'inactive', updated_at: new Date().toISOString() })
           .eq('stripe_subscription_id', sub.id)
+          .select('id')
+          .single()
+        if (cancelledVault?.id) {
+          await logActivity(supabase, cancelledVault.id, 'subscription_status_changed', {
+            status: 'inactive',
+          })
+        }
         break
       }
 
@@ -135,10 +155,33 @@ export async function POST(request: NextRequest) {
         const subId =
           typeof sub === 'string' ? sub : (sub as { id: string } | null)?.id ?? null
         if (!subId) break
-        await supabase
+        const { data: pastDueVault } = await supabase
           .from('vaults')
           .update({ subscription_status: 'past_due', updated_at: new Date().toISOString() })
           .eq('stripe_subscription_id', subId)
+          .select('id, user_id')
+          .single()
+        if (pastDueVault?.id) {
+          await logActivity(supabase, pastDueVault.id, 'subscription_status_changed', {
+            status: 'past_due',
+          })
+        }
+        // Send payment failed email (best-effort)
+        if (pastDueVault?.user_id) {
+          try {
+            const { data: { user: vaultUser } } = await supabase.auth.admin.getUserById(
+              pastDueVault.user_id
+            )
+            if (vaultUser?.email) {
+              const firstName =
+                (vaultUser.user_metadata?.full_name as string | undefined)?.split(' ')[0] ?? 'there'
+              await sendPaymentFailedEmail(vaultUser.email, firstName)
+            }
+          } catch (emailErr) {
+            const msg = emailErr instanceof Error ? emailErr.message : String(emailErr)
+            console.error('[stripe-webhook] payment failed email failed (non-fatal):', msg)
+          }
+        }
         break
       }
 

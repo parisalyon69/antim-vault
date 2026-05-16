@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { ASSET_CATEGORY_LABELS, DOCUMENT_CATEGORY_LABELS } from '@/lib/types'
 import { ADMIN_EMAIL, WHATSAPP_URL, WHATSAPP_DISPLAY } from '@/lib/constants'
 import { tokenIpLimiter } from '@/lib/ratelimit'
+import { logActivity } from '@/lib/activity'
+import { sendReleaseAccessedEmail } from '@/lib/email'
 
 interface Props {
   searchParams: Promise<{ token?: string }>
@@ -68,10 +70,43 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
 
   // Mark token as used only after we have the data — prevents the token
   // from being consumed if the data fetch fails mid-way.
+  const accessedAt = new Date().toISOString()
   await supabase
     .from('vault_release_tokens')
-    .update({ used: true, accessed_at: new Date().toISOString() })
+    .update({ used: true, accessed_at: accessedAt })
     .eq('id', releaseToken.id)
+
+  // Log vault access
+  await logActivity(supabase, vaultId, 'vault_accessed_by_nominee', {})
+
+  // Notify vault owner (best-effort)
+  try {
+    const { data: vaultRow } = await supabase
+      .from('vaults')
+      .select('user_id')
+      .eq('id', vaultId)
+      .single()
+    if (vaultRow?.user_id) {
+      const { data: { user: ownerUser } } = await supabase.auth.admin.getUserById(vaultRow.user_id)
+      if (ownerUser?.email) {
+        const firstName =
+          (ownerUser.user_metadata?.full_name as string | undefined)?.split(' ')[0] ?? 'there'
+        const { data: releaseReq } = await supabase
+          .from('vault_release_requests')
+          .select('requested_by_name')
+          .eq('vault_id', vaultId)
+          .eq('status', 'approved')
+          .order('resolved_at', { ascending: false })
+          .limit(1)
+          .single()
+        const nomineeName = releaseReq?.requested_by_name ?? 'A nominee'
+        await sendReleaseAccessedEmail(ownerUser.email, firstName, nomineeName, accessedAt)
+      }
+    }
+  } catch (notifyErr) {
+    const msg = notifyErr instanceof Error ? notifyErr.message : String(notifyErr)
+    console.error('[release/view] owner notification failed (non-fatal):', msg)
+  }
 
   // Generate download URLs for documents (24hr)
   const docsWithUrls = await Promise.all(
