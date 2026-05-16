@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendReleaseApprovedEmail } from '@/lib/email'
 import { ADMIN_EMAIL } from '@/lib/constants'
+import { logActivity } from '@/lib/activity'
 
 export async function POST(request: Request) {
   // Auth check is the first operation — no DB work before this resolves.
@@ -43,6 +44,11 @@ export async function POST(request: Request) {
   if (statusError) {
     console.error('[admin/approve] status update failed:', statusError.message)
   }
+
+  await logActivity(service, vault_id, 'release_approved', {
+    nominee_name,
+    nominee_email,
+  })
 
   const { error: emailError } = await sendReleaseApprovedEmail(nominee_email, nominee_name, token)
   if (emailError) {

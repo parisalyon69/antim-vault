@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { buildFilePath, uploadFile, formatFileSize } from '@/lib/vault/storage'
 import { createClient } from '@/lib/supabase/client'
 import type { DocumentCategory } from '@/lib/types'
+import { logActivity } from '@/lib/activity'
 
 interface Props {
   vaultId: string
@@ -67,10 +68,9 @@ export default function DocumentUploader({ vaultId, userId, category, onUploaded
     })
 
     if (!dbError) {
-      await supabase.from('vault_activity_log').insert({
-        vault_id: vaultId,
-        action: 'document_uploaded',
-        details: { file_name: selectedFile.name, category },
+      await logActivity(supabase, vaultId, 'document_uploaded', {
+        file_name: selectedFile.name,
+        category,
       })
     }
 

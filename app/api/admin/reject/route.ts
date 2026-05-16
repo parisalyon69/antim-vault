@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { sendReleaseRejectedEmail } from '@/lib/email'
 import { ADMIN_EMAIL } from '@/lib/constants'
+import { logActivity } from '@/lib/activity'
 
 export async function POST(request: Request) {
   // Auth check is the first operation — no DB work before this resolves.
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
 
   const service = await createServiceClient()
 
-  const { error: statusError } = await service
+  const { data: rejectedRequest, error: statusError } = await service
     .from('vault_release_requests')
     .update({
       status: 'rejected',
@@ -28,9 +29,19 @@ export async function POST(request: Request) {
       resolved_at: new Date().toISOString(),
     })
     .eq('id', request_id)
+    .select('vault_id')
+    .single()
 
   if (statusError) {
     console.error('[admin/reject] status update failed:', statusError.message)
+  }
+
+  if (rejectedRequest?.vault_id) {
+    await logActivity(service, rejectedRequest.vault_id, 'release_rejected', {
+      nominee_name,
+      nominee_email,
+      reason,
+    })
   }
 
   const { error: emailError } = await sendReleaseRejectedEmail(nominee_email, nominee_name, reason)

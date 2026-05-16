@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { encryptLetter, decryptLetter } from '@/lib/vault/encryption'
 import { createClient } from '@/lib/supabase/client'
+import { logActivity } from '@/lib/activity'
 
 interface Props {
   vaultId: string
@@ -64,6 +65,7 @@ export default function LetterEditor({ vaultId, userId, initialEncrypted }: Prop
       setIsDirty(false)
       setSaveState('saved')
       setTimeout(() => setSaveState('idle'), 3000)
+      await logActivity(supabase, vaultId, 'letter_saved', {})
     }
   }, [supabase, userId, vaultId])
 
