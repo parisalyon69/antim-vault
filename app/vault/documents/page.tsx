@@ -6,6 +6,7 @@ import DocumentUploader from '@/components/vault/DocumentUploader'
 import { getSignedUrl, formatFileSize } from '@/lib/vault/storage'
 import type { DocumentCategory, VaultDocument } from '@/lib/types'
 import { DOCUMENT_CATEGORY_LABELS } from '@/lib/types'
+import { logActivity } from '@/lib/activity'
 
 const CATEGORIES: DocumentCategory[] = ['will', 'insurance', 'property', 'bank', 'investments', 'identity', 'other']
 
@@ -37,6 +38,10 @@ export default function DocumentsPage() {
     const s = createStorageClient()
     await s.storage.from('vault-documents').remove([doc.file_path])
     await supabase.from('vault_documents').delete().eq('id', doc.id)
+    await logActivity(supabase, vaultId!, 'document_deleted', {
+      file_name: doc.file_name,
+      category: doc.category,
+    })
     setDeleteConfirm(null)
     await load()
   }

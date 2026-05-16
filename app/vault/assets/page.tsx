@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import AssetForm from '@/components/vault/AssetForm'
 import type { AssetCategory, VaultAsset } from '@/lib/types'
 import { ASSET_CATEGORY_LABELS } from '@/lib/types'
+import { logActivity } from '@/lib/activity'
 
 const CATEGORIES: AssetCategory[] = [
   'bank_account',
@@ -45,15 +46,34 @@ export default function AssetsPage() {
         .from('vault_assets')
         .update({ ...data, updated_at: new Date().toISOString() })
         .eq('id', editing.id)
-      if (!error) { setEditing(null); await load() }
+      if (!error) {
+        await logActivity(supabase, vaultId, 'asset_updated', {
+          category: data.category,
+          institution_name: data.institution_name,
+        })
+        setEditing(null)
+        await load()
+      }
     } else {
       const { error } = await supabase.from('vault_assets').insert({ ...data, vault_id: vaultId })
-      if (!error) { setAdding(null); await load() }
+      if (!error) {
+        await logActivity(supabase, vaultId, 'asset_added', {
+          category: data.category,
+          institution_name: data.institution_name,
+        })
+        setAdding(null)
+        await load()
+      }
     }
   }
 
   async function handleDelete(id: string) {
+    const asset = assets.find((a) => a.id === id)
     await supabase.from('vault_assets').delete().eq('id', id)
+    await logActivity(supabase, vaultId!, 'asset_deleted', {
+      category: asset?.category,
+      institution_name: asset?.institution_name,
+    })
     setDeleteConfirm(null)
     await load()
   }

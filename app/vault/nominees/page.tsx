@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import NomineeForm from '@/components/vault/NomineeForm'
 import type { VaultNominee } from '@/lib/types'
+import { logActivity } from '@/lib/activity'
 
 export default function NomineesPage() {
   const supabase = createClient()
@@ -40,6 +41,7 @@ export default function NomineesPage() {
 
     if (editing) {
       await supabase.from('vault_nominees').update(data).eq('id', editing.id)
+      await logActivity(supabase, vaultId, 'nominee_updated', { nominee_name: data.full_name })
       setSavedName(editing.full_name)
       setEditing(null)
     } else {
@@ -49,16 +51,11 @@ export default function NomineesPage() {
         .select()
         .single()
 
-      // Log notification intent
       if (inserted) {
-        await supabase.from('vault_activity_log').insert({
-          vault_id: vaultId,
-          action: 'nominee_added',
-          details: {
-            nominee_name: data.full_name,
-            nominee_email: data.email,
-            notification_message: `${userName} has added you as a nominee on their Antim Digital Vault. When the time comes, you will be able to access important documents and information they have stored. You do not need to do anything now. — The Antim team`,
-          },
+        await logActivity(supabase, vaultId, 'nominee_added', {
+          nominee_name: data.full_name,
+          nominee_email: data.email,
+          notification_message: `${userName} has added you as a nominee on their Antim Digital Vault. When the time comes, you will be able to access important documents and information they have stored. You do not need to do anything now. — The Antim team`,
         })
       }
 
@@ -70,7 +67,9 @@ export default function NomineesPage() {
   }
 
   async function handleDelete(id: string) {
+    const nominee = nominees.find((n) => n.id === id)
     await supabase.from('vault_nominees').delete().eq('id', id)
+    await logActivity(supabase, vaultId!, 'nominee_deleted', { nominee_name: nominee?.full_name })
     setDeleteConfirm(null)
     setSavedName(null)
     await load()
