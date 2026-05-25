@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { ADMIN_EMAIL } from '@/lib/constants'
 import VaultSidebar from '@/components/vault/VaultSidebar'
 
 export default async function VaultLayout({
@@ -11,6 +12,21 @@ export default async function VaultLayout({
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) redirect('/auth/login')
+
+  // Admin bypasses subscription check entirely
+  const isAdmin = user.email === ADMIN_EMAIL
+  if (isAdmin) {
+    return (
+      <div className="flex min-h-screen" style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>
+        <VaultSidebar />
+        <div className="flex-1 flex flex-col pt-14 md:pt-0">
+          <main className="flex-1 px-4 md:px-8 py-8 md:py-10 max-w-[720px] w-full">
+            {children}
+          </main>
+        </div>
+      </div>
+    )
+  }
 
   const { data: vault } = await supabase
     .from('vaults')
