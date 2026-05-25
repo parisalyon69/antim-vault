@@ -25,7 +25,11 @@ export default function VerifyEmailPage() {
   async function handleResend() {
     if (!email || status === 'sending' || status === 'sent') return
     setStatus('sending')
-    const { error } = await supabase.auth.resend({ type: 'signup', email })
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    })
     setStatus(error ? 'error' : 'sent')
   }
 
