@@ -42,14 +42,19 @@ export default function ResetPasswordPage() {
     setMsg(null)
     setLoading(true)
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     })
 
+    const json = await res.json()
     setLoading(false)
 
-    if (error) {
-      setMsg({ text: 'Could not send reset email. Please try again.', type: 'err' })
+    if (!res.ok) {
+      // Show the real server error in development; keep it vague in production
+      const detail = process.env.NODE_ENV === 'development' ? ` (${json.error})` : ''
+      setMsg({ text: `Could not send reset email. Please try again.${detail}`, type: 'err' })
       return
     }
 

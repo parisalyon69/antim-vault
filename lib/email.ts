@@ -62,6 +62,31 @@ export async function sendPaymentFailedEmail(to: string, firstName: string) {
   })
 }
 
+// ─── Password reset ───────────────────────────────────────────────────────────
+// Sent when a user requests a password reset. The resetLink is the full
+// Supabase action URL generated via auth.admin.generateLink — it handles token
+// verification and redirects to /auth/reset-password with #access_token in hash.
+
+export async function sendPasswordResetEmail(to: string, resetLink: string) {
+  return getResend().emails.send({
+    from: FROM_EMAIL,
+    replyTo: ADMIN_EMAIL,
+    to,
+    subject: 'Reset your Antim vault password',
+    text: [
+      `You requested a password reset for your Antim vault.`,
+      ``,
+      `Click the link below to set a new password. This link expires in 1 hour.`,
+      ``,
+      resetLink,
+      ``,
+      `If you did not request this, you can safely ignore this email — your password has not changed.`,
+      ``,
+      `The Antim team`,
+    ].join('\n'),
+  })
+}
+
 // ─── Release request — admin alert ───────────────────────────────────────────
 // Sent to hello@antim.services when a nominee submits a release request
 
