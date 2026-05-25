@@ -94,7 +94,13 @@ function LoginForm() {
             </button>
           </form>
 
-          <p className="text-sm text-[#6b7280] text-center mt-6">
+          <p className="text-sm text-[#6b7280] text-center mt-4">
+            <Link href="/auth/reset-password" className="text-[#6b7280] underline underline-offset-2 hover:text-[#1a1a1a] transition-colors">
+              Forgot password?
+            </Link>
+          </p>
+
+          <p className="text-sm text-[#6b7280] text-center mt-3">
             Don&apos;t have a vault?{' '}
             <Link href="/auth/signup" className="text-[#1a1a1a] underline underline-offset-2">
               Create one
