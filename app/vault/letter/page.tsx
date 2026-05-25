@@ -31,7 +31,6 @@ export default async function LetterPage() {
 
       <LetterEditor
         vaultId={vault.id}
-        userId={user.id}
         initialEncrypted={letter?.encrypted_content ?? null}
       />
 

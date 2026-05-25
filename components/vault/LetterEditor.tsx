@@ -1,38 +1,49 @@
 'use client'
 
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { encryptLetter, decryptLetter } from '@/lib/vault/encryption'
 import { createClient } from '@/lib/supabase/client'
 import { logActivity } from '@/lib/activity'
 
 interface Props {
   vaultId: string
-  userId: string
   initialEncrypted: string | null
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
-export default function LetterEditor({ vaultId, userId, initialEncrypted }: Props) {
+export default function LetterEditor({ vaultId, initialEncrypted }: Props) {
   const supabase = createClient()
   const editorRef = useRef<HTMLDivElement>(null)
   const lastSavedRef = useRef<string>('')
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [isDirty, setIsDirty] = useState(false)
+  const [decryptError, setDecryptError] = useState(false)
 
-  // Decrypt and populate on mount
+  // Decrypt via server API on mount
   useEffect(() => {
-    if (!editorRef.current) return
-    if (initialEncrypted) {
-      try {
-        const decrypted = decryptLetter(initialEncrypted, userId)
-        editorRef.current.innerHTML = decrypted
-        lastSavedRef.current = decrypted
-      } catch {
-        editorRef.current.innerHTML = ''
+    if (!editorRef.current || !initialEncrypted) return
+
+    async function loadDecrypted() {
+      const res = await fetch('/api/vault/letter/decrypt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ encrypted: initialEncrypted }),
+      })
+
+      if (!res.ok) {
+        setDecryptError(true)
+        return
+      }
+
+      const { content } = await res.json()
+      if (editorRef.current) {
+        editorRef.current.innerHTML = content
+        lastSavedRef.current = content
       }
     }
-  }, [initialEncrypted, userId])
+
+    loadDecrypted()
+  }, [initialEncrypted])
 
   // Warn on navigation if dirty
   useEffect(() => {
@@ -51,7 +62,20 @@ export default function LetterEditor({ vaultId, userId, initialEncrypted }: Prop
     if (content === lastSavedRef.current) return
 
     setSaveState('saving')
-    const encrypted = encryptLetter(content, userId)
+
+    // Encrypt via server API — key never touches the browser
+    const encRes = await fetch('/api/vault/letter/encrypt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    })
+
+    if (!encRes.ok) {
+      setSaveState('error')
+      return
+    }
+
+    const { encrypted } = await encRes.json()
 
     const { error } = await supabase.from('vault_letters').upsert(
       { vault_id: vaultId, encrypted_content: encrypted, last_edited: new Date().toISOString() },
@@ -67,7 +91,7 @@ export default function LetterEditor({ vaultId, userId, initialEncrypted }: Prop
       setTimeout(() => setSaveState('idle'), 3000)
       await logActivity(supabase, vaultId, 'letter_saved', {})
     }
-  }, [supabase, userId, vaultId])
+  }, [supabase, vaultId])
 
   // Auto-save every 30 seconds
   useEffect(() => {
@@ -84,6 +108,14 @@ export default function LetterEditor({ vaultId, userId, initialEncrypted }: Prop
       e.preventDefault()
       document.execCommand('italic')
     }
+  }
+
+  if (decryptError) {
+    return (
+      <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-md px-4 py-3">
+        Could not load your letter. Please refresh the page or contact support.
+      </p>
+    )
   }
 
   return (
