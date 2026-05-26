@@ -63,34 +63,26 @@ export default function LetterEditor({ vaultId, initialEncrypted }: Props) {
 
     setSaveState('saving')
 
-    // Encrypt via server API — key never touches the browser
-    const encRes = await fetch('/api/vault/letter/encrypt', {
+    // Single server call: encrypt + save with service client (no RLS friction)
+    const res = await fetch('/api/vault/letter/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, vaultId }),
     })
 
-    if (!encRes.ok) {
+    const json = await res.json()
+
+    if (!res.ok) {
+      console.error('[LetterEditor] save failed:', json.error, json.detail ?? '')
       setSaveState('error')
       return
     }
 
-    const { encrypted } = await encRes.json()
-
-    const { error } = await supabase.from('vault_letters').upsert(
-      { vault_id: vaultId, encrypted_content: encrypted, last_edited: new Date().toISOString() },
-      { onConflict: 'vault_id' }
-    )
-
-    if (error) {
-      setSaveState('error')
-    } else {
-      lastSavedRef.current = content
-      setIsDirty(false)
-      setSaveState('saved')
-      setTimeout(() => setSaveState('idle'), 3000)
-      await logActivity(supabase, vaultId, 'letter_saved', {})
-    }
+    lastSavedRef.current = content
+    setIsDirty(false)
+    setSaveState('saved')
+    setTimeout(() => setSaveState('idle'), 3000)
+    await logActivity(supabase, vaultId, 'letter_saved', {})
   }, [supabase, vaultId])
 
   // Auto-save every 30 seconds
