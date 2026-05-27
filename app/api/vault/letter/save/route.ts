@@ -1,4 +1,4 @@
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { encryptLetter } from '@/lib/vault/encryption'
 
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'content and vaultId are required' }, { status: 400 })
   }
 
-  // Verify the user owns this vault before writing
+  // Verify the user owns this vault — defense-in-depth before writing
   const { data: vault } = await supabase
     .from('vaults')
     .select('id')
@@ -31,9 +31,8 @@ export async function POST(request: Request) {
 
   const encrypted = encryptLetter(content, user.id)
 
-  // Use service client to bypass RLS — ownership is already verified above
-  const service = await createServiceClient()
-  const { error } = await service.from('vault_letters').upsert(
+  // Use the same authenticated client — RLS INSERT policy (v6 migration) allows this
+  const { error } = await supabase.from('vault_letters').upsert(
     {
       vault_id: vaultId,
       encrypted_content: encrypted,

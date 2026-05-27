@@ -196,3 +196,15 @@ $$;
 -- The SELECT policy already exists; this adds the INSERT counterpart.
 CREATE POLICY "own activity only - insert" ON vault_activity_log
   FOR INSERT WITH CHECK (vault_id IN (SELECT id FROM vaults WHERE user_id = auth.uid()));
+
+-- v6: Grant table-level access to vault_letters for authenticated and service_role.
+-- Tables created via SQL editor do not receive automatic grants in all Supabase
+-- configurations. Without these, both the authenticated and service_role users
+-- receive "permission denied for table vault_letters" regardless of RLS policies.
+-- Also adds an explicit INSERT policy — FOR ALL USING does not reliably cover
+-- the INSERT path of an upsert in all Supabase versions.
+GRANT ALL ON TABLE vault_letters TO authenticated;
+GRANT ALL ON TABLE vault_letters TO service_role;
+
+CREATE POLICY "own letter only - insert" ON vault_letters
+  FOR INSERT WITH CHECK (vault_id IN (SELECT id FROM vaults WHERE user_id = auth.uid()));
