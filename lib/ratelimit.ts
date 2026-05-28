@@ -21,6 +21,8 @@ function createLimiter(requests: number, window: string): Ratelimit | null {
   })
 }
 
+// ── Release flow ──────────────────────────────────────────────────────────────
+
 // POST /api/release — 3 submissions per IP per hour
 export const releaseIpLimiter = createLimiter(3, '1 h')
 
@@ -29,3 +31,18 @@ export const releaseEmailLimiter = createLimiter(1, '24 h')
 
 // GET /release/view — 10 token validation attempts per IP per hour
 export const tokenIpLimiter = createLimiter(10, '1 h')
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+// POST /api/auth/reset-password — 5 requests per IP per hour.
+// Prevents enumeration attacks and Resend quota exhaustion.
+export const authResetLimiter = createLimiter(5, '1 h')
+
+// ── Letter encryption ─────────────────────────────────────────────────────────
+
+// POST /api/vault/letter/encrypt — 30 per user per hour.
+// AES encryption is CPU-bound; limit prevents resource exhaustion.
+export const letterEncryptLimiter = createLimiter(30, '1 h')
+
+// POST /api/vault/letter/decrypt — 30 per user per hour.
+export const letterDecryptLimiter = createLimiter(30, '1 h')

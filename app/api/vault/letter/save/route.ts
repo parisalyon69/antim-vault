@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { encryptLetter } from '@/lib/vault/encryption'
 
+const MAX_CONTENT_LENGTH = 50_000 // characters
+
 export async function POST(request: Request) {
   // Auth check — must be a logged-in user
   const supabase = await createClient()
@@ -15,6 +17,13 @@ export async function POST(request: Request) {
 
   if (typeof content !== 'string' || typeof vaultId !== 'string') {
     return NextResponse.json({ error: 'content and vaultId are required' }, { status: 400 })
+  }
+
+  if (content.length > MAX_CONTENT_LENGTH) {
+    return NextResponse.json(
+      { error: `content exceeds maximum length of ${MAX_CONTENT_LENGTH} characters` },
+      { status: 400 }
+    )
   }
 
   // Verify the user owns this vault — defense-in-depth before writing
@@ -42,8 +51,9 @@ export async function POST(request: Request) {
   )
 
   if (error) {
-    console.error('[api/vault/letter/save] upsert failed:', error.code, error.message, error.details)
-    return NextResponse.json({ error: 'Failed to save letter', detail: error.message }, { status: 500 })
+    // Log internally but never return DB error details (column names, codes) to the client.
+    console.error('[api/vault/letter/save] upsert failed:', error.code, error.message)
+    return NextResponse.json({ error: 'Failed to save letter' }, { status: 500 })
   }
 
   return NextResponse.json({ success: true })

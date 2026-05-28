@@ -13,13 +13,32 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { request_id, vault_id, nominee_email, nominee_name } = body
+  const { request_id, nominee_email, nominee_name } = body
 
-  if (!request_id || !vault_id || !nominee_email || !nominee_name) {
+  if (!request_id || !nominee_email || !nominee_name) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
 
   const service = await createServiceClient()
+
+  // Derive vault_id from the database rather than trusting the caller-supplied value.
+  // This prevents an admin UI bug (or malicious body) from associating a token with
+  // the wrong vault.
+  const { data: releaseRequest, error: fetchError } = await service
+    .from('vault_release_requests')
+    .select('vault_id')
+    .eq('id', request_id)
+    .single()
+
+  if (fetchError || !releaseRequest) {
+    return NextResponse.json({ error: 'Release request not found' }, { status: 404 })
+  }
+
+  const vault_id = releaseRequest.vault_id
+
+  if (!vault_id) {
+    return NextResponse.json({ error: 'No vault linked to this release request' }, { status: 422 })
+  }
 
   const token = crypto.randomUUID()
   const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()

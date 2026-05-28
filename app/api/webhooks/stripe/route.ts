@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[stripe-webhook] signature verification failed:', message)
-    return NextResponse.json({ error: `Signature verification failed: ${message}` }, { status: 400 })
+    // Return a generic message — do not reflect the internal error to the caller.
+    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 })
   }
 
   // ── Idempotency check ──────────────────────────────────────────────────────
@@ -235,7 +236,8 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[stripe-webhook] handler error:', message)
-    return NextResponse.json({ error: `Handler error: ${message}` }, { status: 500 })
+    // Return a generic message — do not reflect internal error details to the caller.
+    return NextResponse.json({ error: 'Webhook handler error' }, { status: 500 })
   }
 
   return NextResponse.json({ received: true })

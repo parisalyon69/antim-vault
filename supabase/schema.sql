@@ -208,3 +208,55 @@ GRANT ALL ON TABLE vault_letters TO service_role;
 
 CREATE POLICY "own letter only - insert" ON vault_letters
   FOR INSERT WITH CHECK (vault_id IN (SELECT id FROM vaults WHERE user_id = auth.uid()));
+
+-- ============================================================
+-- v7: RLS hardening — lock down service-role-only tables and
+--     add storage policy for the release-documents bucket.
+-- Run in Supabase SQL Editor.
+-- ============================================================
+
+-- vault_release_requests contains PII (names, emails, phones, vault IDs).
+-- It is accessed exclusively via the service role. Enabling RLS with a
+-- deny-all permissive policy ensures no accidental access via the anon or
+-- authenticated keys if RLS is ever probed directly.
+-- Service role bypasses RLS entirely and is unaffected by these policies.
+ALTER TABLE vault_release_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no direct access" ON vault_release_requests
+  FOR ALL USING (false) WITH CHECK (false);
+
+-- Grants so service_role retains table-level permission (defence against
+-- misconfigured Supabase projects that strip default grants).
+GRANT ALL ON TABLE vault_release_requests TO service_role;
+
+-- vault_release_tokens contains short-lived vault access tokens.
+-- Same access model: service role only.
+ALTER TABLE vault_release_tokens ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no direct access" ON vault_release_tokens
+  FOR ALL USING (false) WITH CHECK (false);
+
+GRANT ALL ON TABLE vault_release_tokens TO service_role;
+
+-- stripe_webhook_events is the idempotency table for Stripe webhooks.
+-- Accessed only by the webhook handler (service role).
+ALTER TABLE stripe_webhook_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no direct access" ON stripe_webhook_events
+  FOR ALL USING (false) WITH CHECK (false);
+
+GRANT ALL ON TABLE stripe_webhook_events TO service_role;
+
+-- Storage RLS for release-documents bucket (death certificates).
+-- /api/release uploads via service role (bypasses storage RLS automatically).
+-- These policies deny any direct access from anon/authenticated clients,
+-- preventing death certificates from being read or written outside the
+-- controlled service-role code path.
+CREATE POLICY "release-documents: deny direct access - select"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'release-documents' AND false);
+
+CREATE POLICY "release-documents: deny direct access - insert"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'release-documents' AND false);
+
+CREATE POLICY "release-documents: deny direct access - delete"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'release-documents' AND false);
