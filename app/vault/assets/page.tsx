@@ -17,6 +17,24 @@ const CATEGORIES: AssetCategory[] = [
   'digital_account',
 ]
 
+function AssetsLoadingSkeleton() {
+  return (
+    <div style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>
+      <div className="h-8 w-56 bg-[#e5e7eb] rounded animate-pulse mb-2" />
+      <div className="h-4 w-96 bg-[#e5e7eb] rounded animate-pulse mb-10" />
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="mb-10">
+          <div className="h-4 w-32 bg-[#e5e7eb] rounded animate-pulse mb-3" />
+          <div className="border border-[#e5e7eb] rounded-lg px-5 py-4">
+            <div className="h-4 w-48 bg-[#e5e7eb] rounded animate-pulse mb-2" />
+            <div className="h-3 w-32 bg-[#e5e7eb] rounded animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function AssetsPage() {
   const supabase = createClient()
   const [assets, setAssets] = useState<VaultAsset[]>([])
@@ -83,7 +101,7 @@ export default function AssetsPage() {
     return acc
   }, {} as Record<AssetCategory, VaultAsset[]>)
 
-  if (loading) return <p className="text-sm text-[#6b7280]">Loading…</p>
+  if (loading) return <AssetsLoadingSkeleton />
 
   return (
     <div style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>
@@ -116,15 +134,21 @@ export default function AssetsPage() {
           </div>
 
           {grouped[cat].length === 0 && adding !== cat && (
-            <p className="text-sm text-[#6b7280] border border-dashed border-[#e5e7eb] rounded-lg px-5 py-4">
-              {cat === 'bank_account' && "Your family doesn't know what bank accounts exist yet."}
-              {cat === 'insurance_policy' && "Your family doesn't know about your insurance policies yet."}
-              {cat === 'property' && "No property listed."}
-              {cat === 'investment' && "No investments added."}
-              {cat === 'ppf_epf_post_office' && "No PPF, EPF, or post office accounts added."}
-              {cat === 'bank_locker' && "No bank locker added."}
-              {cat === 'digital_account' && "No digital accounts added."}
-            </p>
+            <button
+              onClick={() => setAdding(cat)}
+              className="w-full text-left border border-dashed border-[#e5e7eb] rounded-lg px-5 py-5 hover:border-[#4F6F52]/40 hover:bg-[#f9faf8] transition-colors group"
+            >
+              <p className="text-sm text-[#6b7280] group-hover:text-[#4F6F52] transition-colors">
+                {cat === 'bank_account' && "Your family doesn't know what bank accounts exist yet. Add one."}
+                {cat === 'insurance_policy' && "No insurance policies added. Your family needs to know about these."}
+                {cat === 'property' && "No property listed. Add any flat, house, or plot you own."}
+                {cat === 'investment' && "No investments added. Add mutual funds, stocks, or broker accounts."}
+                {cat === 'ppf_epf_post_office' && "No PPF, EPF, or post office accounts added."}
+                {cat === 'bank_locker' && "No bank locker added. If you have a locker, your family needs to know."}
+                {cat === 'digital_account' && "No digital accounts added. Email, subscriptions, social media."}
+              </p>
+              <p className="text-xs text-[#4F6F52] mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Click to add +</p>
+            </button>
           )}
 
           {grouped[cat].map((asset) => (

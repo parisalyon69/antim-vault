@@ -81,7 +81,21 @@ export default function SettingsPage() {
     router.push('/')
   }
 
-  if (loading) return <p className="text-sm text-[#6b7280]">Loading…</p>
+  if (loading) return (
+    <div style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>
+      <div className="h-8 w-28 bg-[#e5e7eb] rounded animate-pulse mb-8" />
+      {[1, 2].map((i) => (
+        <div key={i} className="mb-10">
+          <div className="h-4 w-32 bg-[#e5e7eb] rounded animate-pulse mb-4" />
+          <div className="border border-[#e5e7eb] rounded-lg p-6">
+            <div className="h-4 w-48 bg-[#e5e7eb] rounded animate-pulse mb-3" />
+            <div className="h-10 w-full bg-[#e5e7eb] rounded animate-pulse mb-3" />
+            <div className="h-9 w-32 bg-[#e5e7eb] rounded animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 
   return (
     <div style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>

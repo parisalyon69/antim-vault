@@ -10,6 +10,23 @@ import { logActivity } from '@/lib/activity'
 
 const CATEGORIES: DocumentCategory[] = ['will', 'insurance', 'property', 'bank', 'investments', 'identity', 'other']
 
+function DocumentsLoadingSkeleton() {
+  return (
+    <div style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>
+      <div className="h-8 w-36 bg-[#e5e7eb] rounded animate-pulse mb-2" />
+      <div className="h-4 w-80 bg-[#e5e7eb] rounded animate-pulse mb-6" />
+      <div className="flex gap-2 mb-8">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-8 w-20 bg-[#e5e7eb] rounded animate-pulse" />
+        ))}
+      </div>
+      <div className="border-2 border-dashed border-[#e5e7eb] rounded-lg p-10 mb-8 flex items-center justify-center">
+        <div className="h-4 w-48 bg-[#e5e7eb] rounded animate-pulse" />
+      </div>
+    </div>
+  )
+}
+
 export default function DocumentsPage() {
   const supabase = createClient()
   const [userId, setUserId] = useState<string | null>(null)
@@ -53,7 +70,7 @@ export default function DocumentsPage() {
 
   const filtered = docs.filter((d) => d.category === activeTab)
 
-  if (loading) return <p className="text-sm text-[#6b7280]">Loading…</p>
+  if (loading) return <DocumentsLoadingSkeleton />
 
   return (
     <div style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>

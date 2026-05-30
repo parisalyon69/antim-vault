@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import CompletenessScore from '@/components/vault/CompletenessScore'
 import { calculateCompleteness } from '@/lib/vault/completeness'
@@ -57,6 +59,17 @@ export default async function VaultDashboard() {
   if (letterErr) console.error('[vault/dashboard] vault_letters query:', letterErr.message)
   if (lastTokenErr) console.error('[vault/dashboard] vault_release_tokens query:', lastTokenErr.message)
 
+  // Redirect new users (empty vault, no onboarding cookie) to the onboarding flow
+  const cookieStore = await cookies()
+  const onboardingDone = cookieStore.get('onboarding_done')
+  const isEmpty =
+    (assetCount ?? 0) === 0 &&
+    (documentCount ?? 0) === 0 &&
+    (nomineeCount ?? 0) === 0
+  if (!onboardingDone && isEmpty) {
+    redirect('/vault/onboarding')
+  }
+
   const scoreData = {
     nomineeCount: nomineeCount ?? 0,
     documentCount: documentCount ?? 0,
@@ -89,25 +102,29 @@ export default async function VaultDashboard() {
       title: 'Accounts & assets',
       count: assetCount ?? 0,
       href: '/vault/assets',
-      empty: 'Your family doesn\'t know what accounts exist yet.',
+      empty: 'Your family doesn\'t know what accounts exist. Add your first one.',
+      cta: 'Add an account',
     },
     {
       title: 'Documents',
       count: documentCount ?? 0,
       href: '/vault/documents',
-      empty: 'No documents uploaded yet.',
+      empty: 'Upload your will, insurance papers, and property documents.',
+      cta: 'Upload a document',
     },
     {
       title: 'Nominees',
       count: nomineeCount ?? 0,
       href: '/vault/nominees',
-      empty: 'No one has been named yet.',
+      empty: 'No one knows to look here yet. Add a nominee.',
+      cta: 'Add a nominee',
     },
     {
       title: 'Personal letter',
       count: letter ? 1 : 0,
       href: '/vault/letter',
-      empty: 'Your family hasn\'t heard from you yet.',
+      empty: 'Your family hasn\'t heard from you yet. Write them a letter.',
+      cta: 'Write a letter',
     },
   ]
 
@@ -146,7 +163,11 @@ export default async function VaultDashboard() {
           <Link
             key={section.href}
             href={section.href}
-            className="border border-[#e5e7eb] rounded-lg p-6 hover:border-[#1a1a1a] transition-colors group"
+            className={`border rounded-lg p-6 transition-colors group ${
+              section.count > 0
+                ? 'border-[#e5e7eb] hover:border-[#1a1a1a]'
+                : 'border-dashed border-[#e5e7eb] hover:border-[#4F6F52]/40 hover:bg-[#f9faf8]'
+            }`}
           >
             <p className="text-xs text-[#6b7280] uppercase tracking-wide mb-2">{section.title}</p>
             {section.count > 0 ? (
@@ -156,8 +177,10 @@ export default async function VaultDashboard() {
             ) : (
               <p className="text-sm text-[#6b7280] leading-relaxed">{section.empty}</p>
             )}
-            <p className="text-xs text-[#1a1a1a] mt-3 group-hover:underline underline-offset-2">
-              {section.count > 0 ? 'Manage →' : 'Add now →'}
+            <p className={`text-xs mt-3 group-hover:underline underline-offset-2 transition-colors ${
+              section.count > 0 ? 'text-[#1a1a1a]' : 'text-[#4F6F52]'
+            }`}>
+              {section.count > 0 ? 'Manage' : section.cta} &rarr;
             </p>
           </Link>
         ))}

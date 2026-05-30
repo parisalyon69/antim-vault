@@ -6,6 +6,21 @@ import NomineeForm from '@/components/vault/NomineeForm'
 import type { VaultNominee } from '@/lib/types'
 import { logActivity } from '@/lib/activity'
 
+function NomineesLoadingSkeleton() {
+  return (
+    <div style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>
+      <div className="h-8 w-32 bg-[#e5e7eb] rounded animate-pulse mb-2" />
+      <div className="h-4 w-80 bg-[#e5e7eb] rounded animate-pulse mb-8" />
+      <div className="border border-[#e5e7eb] rounded-lg px-5 py-4 mb-4">
+        <div className="h-4 w-40 bg-[#e5e7eb] rounded animate-pulse mb-2" />
+        <div className="h-3 w-24 bg-[#e5e7eb] rounded animate-pulse mb-1" />
+        <div className="h-3 w-56 bg-[#e5e7eb] rounded animate-pulse" />
+      </div>
+      <div className="h-10 w-36 bg-[#e5e7eb] rounded-md animate-pulse" />
+    </div>
+  )
+}
+
 export default function NomineesPage() {
   const supabase = createClient()
   const [vaultId, setVaultId] = useState<string | null>(null)
@@ -77,7 +92,7 @@ export default function NomineesPage() {
 
   const primaryExists = nominees.some((n) => n.is_primary)
 
-  if (loading) return <p className="text-sm text-[#6b7280]">Loading…</p>
+  if (loading) return <NomineesLoadingSkeleton />
 
   return (
     <div style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>
@@ -131,13 +146,35 @@ export default function NomineesPage() {
         </div>
       ))}
 
+      {/* Empty state */}
+      {nominees.length === 0 && !adding && (
+        <div className="border border-dashed border-[#e5e7eb] rounded-lg px-6 py-10 mb-6 text-center">
+          <div className="w-10 h-10 rounded-full bg-[#f3f4f6] flex items-center justify-center mx-auto mb-4">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="7" r="3" stroke="#9ca3af" strokeWidth="1.5" />
+              <path d="M4 16c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </div>
+          <p className="text-sm font-medium text-[#1a1a1a] mb-1">No nominees added yet</p>
+          <p className="text-sm text-[#6b7280] mb-4 max-w-xs mx-auto">
+            Without a nominee, no one will know to request access to your vault.
+          </p>
+          <button
+            onClick={() => setAdding(true)}
+            className="bg-[#4F6F52] text-white rounded-md px-5 py-2.5 text-sm font-medium hover:bg-[#3d5940] transition-colors"
+          >
+            Add a nominee
+          </button>
+        </div>
+      )}
+
       {/* Add nominee */}
-      {nominees.length < 2 && !adding && (
+      {nominees.length > 0 && nominees.length < 2 && !adding && (
         <button
           onClick={() => setAdding(true)}
           className="border border-[#1a1a1a] text-[#1a1a1a] rounded-md px-5 py-2.5 text-sm font-medium hover:bg-[#fafaf9] transition-colors mb-8"
         >
-          Add a nominee
+          Add a second nominee
         </button>
       )}
 
