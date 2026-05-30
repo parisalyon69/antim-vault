@@ -11,6 +11,15 @@ export default function HomePage() {
             Antim
           </Link>
           <div className="flex items-center gap-4">
+            <Link href="/auth/login" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
+              Sign in
+            </Link>
+            <Link
+              href="/auth/signup"
+              className="text-sm bg-[#1a1a1a] text-white px-4 py-2 rounded-md hover:bg-[#333] transition-colors"
+            >
+              Start your vault
+            </Link>
             <a
               href="https://antim.services"
               target="_blank"
@@ -22,15 +31,6 @@ export default function HomePage() {
                 <path d="M2.5 8.5L8.5 2.5M8.5 2.5H5M8.5 2.5V6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </a>
-            <Link href="/auth/login" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
-              Sign in
-            </Link>
-            <Link
-              href="/auth/signup"
-              className="text-sm bg-[#1a1a1a] text-white px-4 py-2 rounded-md hover:bg-[#333] transition-colors"
-            >
-              Start your vault
-            </Link>
           </div>
         </div>
       </nav>
@@ -38,8 +38,9 @@ export default function HomePage() {
       {/* Hero */}
       <section className="py-24 px-6">
         <div className="max-w-[720px] mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl font-semibold text-[#1a1a1a] leading-tight mb-6" style={{ fontFamily: 'var(--font-lora, Lora, Georgia, serif)' }}>
-            Everything your family will need.<br />In one place.
+          <h1 className="text-4xl sm:text-5xl font-semibold text-[#1a1a1a] leading-tight mb-6 max-w-md mx-auto" style={{ fontFamily: 'var(--font-lora, Lora, Georgia, serif)' }}>
+            Everything your family will need.{' '}
+            <span className="block">In one place.</span>
           </h1>
           <p className="text-lg text-[#6b7280] leading-relaxed mb-10 max-w-lg mx-auto">
             Store your documents, map your accounts, and leave a message for your family — so nothing gets lost when it matters most.
