@@ -57,6 +57,18 @@ export default function VaultSidebar() {
       >
         Sign out
       </button>
+
+      <a
+        href="https://antim.services"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1 text-xs text-[#9ca3af] hover:text-[#6b7280] transition-colors px-2 mt-4"
+      >
+        antim.services
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <path d="M2 8L8 2M8 2H4.5M8 2v3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </a>
     </>
   )
 
