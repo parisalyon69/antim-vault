@@ -156,23 +156,25 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-[#e5e7eb] py-10 px-6 mt-auto">
-        <div className="max-w-[720px] mx-auto text-center">
-          <div className="flex items-center justify-center gap-6 mb-4 flex-wrap">
-            <a href="https://antim.services" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
-              antim.services
-            </a>
-            <a href="https://antim.services/faq" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
-              FAQ
-            </a>
-            <a href="https://antim.services/privacy-policy" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
-              Privacy Policy
-            </a>
-            <Link href="/release" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
-              Request access
-            </Link>
+        <div className="max-w-[720px] mx-auto">
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+            <span className="text-base font-semibold text-[#6b7280]" style={{ fontFamily: 'var(--font-lora, Lora, Georgia, serif)' }}>Antim</span>
+            <div className="flex items-center gap-6 flex-wrap">
+              <a href="https://antim.services" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
+                antim.services
+              </a>
+              <a href="https://antim.services/faq" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
+                FAQ
+              </a>
+              <a href="https://antim.services/privacy-policy" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
+                Privacy Policy
+              </a>
+              <Link href="/release" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
+                Request access
+              </Link>
+            </div>
           </div>
-          <p className="text-sm text-[#6b7280]">Antim © 2025 · Built with care for Indian families</p>
-          <p className="text-sm text-[#6b7280] mt-1">hello@antim.services · antim.services</p>
+          <p className="text-sm text-[#9ca3af]">© 2026 Orventis Partners Pvt Ltd</p>
         </div>
       </footer>
 
