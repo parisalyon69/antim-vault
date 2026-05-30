@@ -11,6 +11,17 @@ export default function HomePage() {
             Antim
           </Link>
           <div className="flex items-center gap-4">
+            <a
+              href="https://antim.services"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden min-[400px]:inline-flex items-center gap-1 text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors"
+            >
+              antim.services
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+                <path d="M2.5 8.5L8.5 2.5M8.5 2.5H5M8.5 2.5V6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </a>
             <Link href="/auth/login" className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors">
               Sign in
             </Link>
