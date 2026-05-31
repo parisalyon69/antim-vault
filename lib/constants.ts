@@ -2,7 +2,7 @@
 // or are likely to change over time.
 
 // ── Contact ───────────────────────────────────────────────────────────────────
-export const ADMIN_EMAIL = 'jayantuno@gmail.com'
+export const ADMIN_EMAIL = 'hello@antim.services'
 export const NOREPLY_EMAIL = 'noreply@antim.services'
 export const FROM_EMAIL = `Antim <${NOREPLY_EMAIL}>`
 
