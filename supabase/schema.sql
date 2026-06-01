@@ -260,3 +260,11 @@ CREATE POLICY "release-documents: deny direct access - insert"
 CREATE POLICY "release-documents: deny direct access - delete"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'release-documents' AND false);
+
+-- ============================================================
+-- v8: Add subscription expiry date for annual billing tracking.
+-- Set to 1 year from payment date on checkout.session.completed
+-- and refreshed on each invoice.payment_succeeded (renewal).
+-- Run in Supabase SQL Editor.
+-- ============================================================
+ALTER TABLE vaults ADD COLUMN IF NOT EXISTS subscription_expiry_date TIMESTAMPTZ;

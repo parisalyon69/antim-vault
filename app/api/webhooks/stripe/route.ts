@@ -67,14 +67,10 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
-        const userId = session.metadata?.userId
-
-        if (!session.customer_email) {
-          console.warn('[stripe-webhook] checkout.session.completed — customer_email absent in session; welcome email will use auth record instead')
-        }
+        const userId = session.metadata?.supabase_user_id
 
         if (!userId) {
-          console.error('[stripe-webhook] no userId in session metadata')
+          console.error('[stripe-webhook] no supabase_user_id in session metadata')
           break
         }
 
@@ -88,12 +84,16 @@ export async function POST(request: NextRequest) {
             ? session.subscription
             : session.subscription?.id ?? null
 
+        const expiryDate = new Date()
+        expiryDate.setFullYear(expiryDate.getFullYear() + 1)
+
         const { error } = await supabase.from('vaults').upsert(
           {
             user_id: userId,
             subscription_status: 'active',
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
+            subscription_expiry_date: expiryDate.toISOString(),
             consent_given: true,
             consent_given_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -103,31 +103,57 @@ export async function POST(request: NextRequest) {
 
         if (error) {
           console.error('[stripe-webhook] supabase upsert error:', error.message)
-        } else {
-          // Send welcome email (best-effort — do not block the webhook response)
-          try {
-            const { data: { user: vaultUser } } = await supabase.auth.admin.getUserById(userId)
-            if (vaultUser?.email) {
-              const firstName = (vaultUser.user_metadata?.full_name as string | undefined)
-                ?.split(' ')[0] ?? 'there'
-              await sendWelcomeEmail(vaultUser.email, firstName)
-            }
-          } catch (emailErr) {
-            const msg = emailErr instanceof Error ? emailErr.message : String(emailErr)
-            console.error('[stripe-webhook] welcome email failed (non-fatal):', msg)
-          }
+          throw new Error(`Supabase upsert failed: ${error.message}`)
+        }
 
-          // Log vault activation
-          const { data: newVault } = await supabase
-            .from('vaults')
-            .select('id')
-            .eq('user_id', userId)
-            .single()
-          if (newVault?.id) {
-            await logActivity(supabase, newVault.id, 'vault_activated', {
-              stripe_customer_id: customerId,
-            })
+        // Send welcome email (best-effort — do not block the webhook response)
+        try {
+          const { data: { user: vaultUser } } = await supabase.auth.admin.getUserById(userId)
+          if (vaultUser?.email) {
+            const firstName = (vaultUser.user_metadata?.full_name as string | undefined)
+              ?.split(' ')[0] ?? 'there'
+            await sendWelcomeEmail(vaultUser.email, firstName)
           }
+        } catch (emailErr) {
+          const msg = emailErr instanceof Error ? emailErr.message : String(emailErr)
+          console.error('[stripe-webhook] welcome email failed (non-fatal):', msg)
+        }
+
+        // Log vault activation
+        const { data: newVault } = await supabase
+          .from('vaults')
+          .select('id')
+          .eq('user_id', userId)
+          .single()
+        if (newVault?.id) {
+          await logActivity(supabase, newVault.id, 'vault_activated', {
+            stripe_customer_id: customerId,
+          })
+        }
+        break
+      }
+
+      case 'customer.subscription.created': {
+        // Initial subscription record — status already set by checkout.session.completed.
+        // Re-confirm active and ensure expiry date is set in case event order varies.
+        const sub = event.data.object as Stripe.Subscription
+        if (sub.status !== 'active') break
+
+        const expiryDate = new Date()
+        expiryDate.setFullYear(expiryDate.getFullYear() + 1)
+
+        const { error } = await supabase
+          .from('vaults')
+          .update({
+            subscription_status: 'active',
+            subscription_expiry_date: expiryDate.toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_subscription_id', sub.id)
+
+        if (error) {
+          console.error('[stripe-webhook] supabase update error (subscription.created):', error.message)
+          throw new Error(`Supabase update failed: ${error.message}`)
         }
         break
       }
@@ -169,10 +195,23 @@ export async function POST(request: NextRequest) {
           typeof sub === 'string' ? sub : (sub as { id: string } | null)?.id ?? null
         // Only act on renewals — checkout.session.completed handles the initial payment
         if (!subId || invoice.billing_reason === 'subscription_create') break
-        await supabase
+
+        const expiryDate = new Date()
+        expiryDate.setFullYear(expiryDate.getFullYear() + 1)
+
+        const { error } = await supabase
           .from('vaults')
-          .update({ subscription_status: 'active', updated_at: new Date().toISOString() })
+          .update({
+            subscription_status: 'active',
+            subscription_expiry_date: expiryDate.toISOString(),
+            updated_at: new Date().toISOString(),
+          })
           .eq('stripe_subscription_id', subId)
+
+        if (error) {
+          console.error('[stripe-webhook] supabase update error (invoice.payment_succeeded):', error.message)
+          throw new Error(`Supabase update failed: ${error.message}`)
+        }
         break
       }
 
