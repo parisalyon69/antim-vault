@@ -198,30 +198,26 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
 }
 
 // ─── Nominee alert email ──────────────────────────────────────────────────────
-// Sent to the nominee when the vault owner adds them
+// Sent to the nominee when the vault owner adds them (or on manual resend)
 
 export async function sendNomineeAlertEmail(
   to: string,
   nomineeName: string,
   ownerName: string
 ) {
-  const subject = `${ownerName} has added you as their Antim vault nominee`
+  const subject = `${ownerName} has named you as a nominee on their Antim vault`
   const html = baseHtml({
     previewText: `${ownerName} has named you as a nominee on their Antim vault.`,
     bodyContent: `
       ${h2(`Dear ${nomineeName},`)}
-      ${p(`${ownerName} has stored their important financial documents and account details in a secure digital vault called Antim, and has named you as someone who should receive access when the time comes.`)}
-      ${p('You do not need to do anything right now. This is just to let you know.')}
+      ${p(`${ownerName} has named you as a nominee on their Antim Digital Vault. Antim is a secure place where families store important documents, account details, and a personal letter so that nothing is lost when the time comes.`)}
+      ${p('This is a notification only. You do not have access to anything right now, and you do not need to do anything at this stage. When the time comes, the family will be in touch with you directly.')}
       ${divider()}
-      ${p('When the time comes, you or another family member can request access at the link below. You will need to provide a death certificate, and our team will verify the request within 2 to 3 business days.', { muted: true })}
-      <div style="margin:28px 0;">
-        ${ctaButton('Learn more about Antim', `${APP_URL}`)}
-      </div>
-      ${p(`Questions? You can reach us at ${ADMIN_EMAIL} or WhatsApp ${WHATSAPP_DISPLAY}.`, { muted: true })}
+      ${p(`If you have any questions, you can reach us at hello@antim.services.`, { muted: true })}
       ${p('The Antim team', { muted: true })}
     `,
   })
-  return getResend().emails.send({ from: FROM_EMAIL, replyTo: ADMIN_EMAIL, to, subject, html })
+  return getResend().emails.send({ from: FROM_EMAIL_HELLO, replyTo: ADMIN_EMAIL, to, subject, html })
 }
 
 // ─── Release request — admin alert ───────────────────────────────────────────
@@ -426,4 +422,97 @@ export async function sendNomineeNudgeEmail(to: string, firstName: string) {
     `,
   })
   return getResend().emails.send({ from: FROM_EMAIL, replyTo: ADMIN_EMAIL, to, subject, html })
+}
+
+// ─── Subscription renewal reminders ──────────────────────────────────────────
+
+export async function sendRenewal30DayEmail(to: string, firstName: string, renewalDate: string) {
+  const subject = 'Your Antim vault renews in 30 days'
+  const html = baseHtml({
+    previewText: 'Your Antim vault subscription renews in 30 days. Your family\'s documents are safe.',
+    bodyContent: `
+      ${h2(`Hi ${firstName}, your vault renews in 30 days.`)}
+      ${p(`Your Antim vault subscription renews on ${renewalDate}. Everything stored in your vault -- documents, accounts, nominees, and your personal letter -- will remain safe and accessible.`)}
+      ${p('No action is needed if your payment details are current. Log in any time to review your vault before renewal.')}
+      <div style="margin:28px 0;">
+        ${ctaButton('Review my vault', `${APP_URL}/vault`)}
+      </div>
+      ${p(`Questions? Reply to this email or WhatsApp us at ${WHATSAPP_DISPLAY}.`, { muted: true })}
+      ${p('The Antim team', { muted: true })}
+    `,
+  })
+  return getResend().emails.send({ from: FROM_EMAIL_HELLO, replyTo: ADMIN_EMAIL, to, subject, html })
+}
+
+export async function sendRenewal7DayEmail(to: string, firstName: string, renewalDate: string) {
+  const subject = 'Your Antim vault renews in 7 days'
+  const html = baseHtml({
+    previewText: 'Your vault subscription renews in 7 days. Make sure your payment details are current.',
+    bodyContent: `
+      ${h2(`Hi ${firstName}, your vault renews in 7 days.`)}
+      ${p(`Your Antim vault subscription renews on ${renewalDate}. To avoid any interruption to your vault, please make sure your payment details are up to date.`)}
+      <div style="margin:28px 0;">
+        ${ctaButton('Check my vault', `${APP_URL}/vault`)}
+      </div>
+      ${p('To update payment details, go to Settings in your vault.', { muted: true })}
+      ${p(`Questions? Reply to this email or WhatsApp us at ${WHATSAPP_DISPLAY}.`, { muted: true })}
+      ${p('The Antim team', { muted: true })}
+    `,
+  })
+  return getResend().emails.send({ from: FROM_EMAIL_HELLO, replyTo: ADMIN_EMAIL, to, subject, html })
+}
+
+export async function sendRenewalExpiredEmail(to: string, firstName: string) {
+  const subject = 'Your Antim vault subscription has expired'
+  const html = baseHtml({
+    previewText: 'Your vault subscription has expired. Your data is safely retained for 90 days.',
+    bodyContent: `
+      ${h2(`Hi ${firstName}, your vault subscription has expired.`)}
+      ${p('Your Antim vault is currently inactive. Your documents, accounts, and personal letter are safely retained for 90 days. You can reactivate at any time.')}
+      <div style="margin:28px 0;">
+        ${ctaButton('Renew my vault', `${APP_URL}`)}
+      </div>
+      ${divider()}
+      ${p('If you do not renew within 90 days, please contact us at hello@antim.services before that date so we can discuss your options.', { muted: true, small: true })}
+      ${p(`Questions? Reply to this email or WhatsApp us at ${WHATSAPP_DISPLAY}.`, { muted: true })}
+      ${p('The Antim team', { muted: true })}
+    `,
+  })
+  return getResend().emails.send({ from: FROM_EMAIL_HELLO, replyTo: ADMIN_EMAIL, to, subject, html })
+}
+
+// ─── Document expiry alerts ───────────────────────────────────────────────────
+
+export async function sendDocExpiry60Email(to: string, firstName: string, documentName: string, expiryDate: string) {
+  const subject = 'One of your documents expires in 60 days'
+  const html = baseHtml({
+    previewText: `${documentName} in your Antim vault expires in 60 days.`,
+    bodyContent: `
+      ${h2(`Hi ${firstName}, a document is expiring soon.`)}
+      ${p(`Your document <strong>${documentName}</strong> expires on ${expiryDate}.`)}
+      ${p('If this document needs to be renewed or replaced, please do so and upload the updated version to your vault so your family always has the most current copy.')}
+      <div style="margin:28px 0;">
+        ${ctaButton('Update my documents', `${APP_URL}/vault/documents`)}
+      </div>
+      ${p('The Antim team', { muted: true })}
+    `,
+  })
+  return getResend().emails.send({ from: FROM_EMAIL_HELLO, replyTo: ADMIN_EMAIL, to, subject, html })
+}
+
+export async function sendDocExpiry7Email(to: string, firstName: string, documentName: string, expiryDate: string) {
+  const subject = 'Your document expires in 7 days'
+  const html = baseHtml({
+    previewText: `${documentName} expires in 7 days. Update it in your vault.`,
+    bodyContent: `
+      ${h2(`Hi ${firstName}, act soon.`)}
+      ${p(`Your document <strong>${documentName}</strong> expires on ${expiryDate} -- that is 7 days from now.`)}
+      ${p('Please renew it and upload the updated version to your vault.')}
+      <div style="margin:28px 0;">
+        ${ctaButton('Update my documents', `${APP_URL}/vault/documents`)}
+      </div>
+      ${p('The Antim team', { muted: true })}
+    `,
+  })
+  return getResend().emails.send({ from: FROM_EMAIL_HELLO, replyTo: ADMIN_EMAIL, to, subject, html })
 }

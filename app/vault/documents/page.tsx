@@ -35,6 +35,8 @@ export default function DocumentsPage() {
   const [activeTab, setActiveTab] = useState<DocumentCategory>('will')
   const [loading, setLoading] = useState(true)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [editingExpiry, setEditingExpiry] = useState<string | null>(null)
+  const [expiryInput, setExpiryInput] = useState('')
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -49,6 +51,16 @@ export default function DocumentsPage() {
   }, [supabase])
 
   useEffect(() => { load() }, [load])
+
+  async function handleSaveExpiry(docId: string) {
+    await supabase
+      .from('vault_documents')
+      .update({ expiry_date: expiryInput || null })
+      .eq('id', docId)
+    setEditingExpiry(null)
+    setExpiryInput('')
+    await load()
+  }
 
   async function handleDelete(doc: VaultDocument) {
     const { createClient: createStorageClient } = await import('@/lib/supabase/client')
@@ -125,6 +137,11 @@ export default function DocumentsPage() {
                     {doc.file_size ? formatFileSize(doc.file_size) : ''}{' '}
                     · {new Date(doc.uploaded_at).toLocaleDateString('en-IN')}
                   </p>
+                  {doc.expiry_date && (
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      Expires {new Date(doc.expiry_date + 'T12:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-3 flex-shrink-0">
                   <button
@@ -134,6 +151,12 @@ export default function DocumentsPage() {
                     Preview
                   </button>
                   <button
+                    onClick={() => { setEditingExpiry(doc.id); setExpiryInput(doc.expiry_date ?? '') }}
+                    className="text-sm text-[#6b7280] underline underline-offset-2 hover:text-[#1a1a1a]"
+                  >
+                    {doc.expiry_date ? 'Edit expiry' : 'Set expiry'}
+                  </button>
+                  <button
                     onClick={() => setDeleteConfirm(doc.id)}
                     className="text-sm text-red-600 underline underline-offset-2"
                   >
@@ -141,6 +164,32 @@ export default function DocumentsPage() {
                   </button>
                 </div>
               </div>
+
+              {editingExpiry === doc.id && (
+                <div className="border border-[#e5e7eb] rounded-lg px-5 py-4 mt-1 flex items-end gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs text-[#6b7280] mb-1.5">Expiry date (leave blank to remove)</label>
+                    <input
+                      type="date"
+                      value={expiryInput}
+                      onChange={(e) => setExpiryInput(e.target.value)}
+                      className="w-full border border-[#e5e7eb] rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-[#1a1a1a] transition-colors"
+                    />
+                  </div>
+                  <button
+                    onClick={() => handleSaveExpiry(doc.id)}
+                    className="bg-[#1a1a1a] text-white rounded-md px-4 py-2.5 text-sm font-medium hover:bg-[#333] transition-colors"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setEditingExpiry(null); setExpiryInput('') }}
+                    className="border border-[#1a1a1a] text-[#1a1a1a] rounded-md px-4 py-2.5 text-sm font-medium hover:bg-[#fafaf9] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
 
               {deleteConfirm === doc.id && (
                 <div className="border border-red-100 bg-red-50 rounded-lg px-5 py-4 mt-1">

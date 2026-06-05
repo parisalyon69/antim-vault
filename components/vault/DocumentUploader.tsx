@@ -22,6 +22,7 @@ export default function DocumentUploader({ vaultId, userId, category, onUploaded
   const [dragging, setDragging] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
   const [description, setDescription] = useState('')
+  const [expiryDate, setExpiryDate] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -65,6 +66,7 @@ export default function DocumentUploader({ vaultId, userId, category, onUploaded
       mime_type: selectedFile.type,
       category,
       description: description || null,
+      expiry_date: expiryDate || null,
     })
 
     if (!dbError) {
@@ -78,6 +80,7 @@ export default function DocumentUploader({ vaultId, userId, category, onUploaded
       setProgress(null)
       setSelectedFile(null)
       setDescription('')
+      setExpiryDate('')
       onUploaded()
     }, 600)
   }
@@ -126,6 +129,20 @@ export default function DocumentUploader({ vaultId, userId, category, onUploaded
             placeholder="Description (optional)"
             className="w-full border border-[#e5e7eb] rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1a1a1a] transition-colors"
           />
+
+          <div>
+            <label className="block text-xs text-[#6b7280] mb-1.5">
+              Document expiry date{' '}
+              <span className="text-[#9ca3af] font-normal">(optional -- e.g. passport, insurance policy)</span>
+            </label>
+            <input
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              className="w-full border border-[#e5e7eb] rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1a1a1a] transition-colors text-[#6b7280]"
+            />
+          </div>
 
           {progress !== null && (
             <div className="w-full bg-[#e5e7eb] rounded-full h-1.5">

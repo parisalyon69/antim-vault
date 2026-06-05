@@ -59,6 +59,7 @@ export interface VaultDocument {
   category: DocumentCategory
   description: string | null
   uploaded_at: string
+  expiry_date: string | null
 }
 
 export type DocumentCategory =
@@ -89,6 +90,7 @@ export interface VaultNominee {
   email: string | null
   is_primary: boolean
   notified: boolean
+  notified_at: string | null
   created_at: string
 }
 

@@ -31,6 +31,8 @@ export default function NomineesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [savedName, setSavedName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [notifyError, setNotifyError] = useState<string | null>(null)
+  const [notifySuccess, setNotifySuccess] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -46,7 +48,7 @@ export default function NomineesPage() {
 
   useEffect(() => { load() }, [load])
 
-  async function handleSave(data: Partial<VaultNominee>) {
+  async function handleSave(data: Partial<VaultNominee>, sendNotify: boolean) {
     if (!vaultId) return
 
     // Enforce primary uniqueness
@@ -70,8 +72,18 @@ export default function NomineesPage() {
         await logActivity(supabase, vaultId, 'nominee_added', {
           nominee_name: data.full_name,
           nominee_email: data.email,
-          notification_message: `${userName} has added you as a nominee on their Antim Digital Vault. When the time comes, you will be able to access important documents and information they have stored. You do not need to do anything now. — The Antim team`,
         })
+      }
+
+      // For new nominees, if the user opted to send notification
+      if (!editing && inserted && sendNotify && data.email) {
+        const res = await fetch(`/api/vault/nominees/${inserted.id}/notify`, { method: 'POST' })
+        const json = await res.json().catch(() => ({}))
+        if (json.emailFailed) {
+          setNotifyError("We could not send the notification. You can retry from the nominee list.")
+        } else if (json.ok) {
+          setNotifySuccess(`Notification sent to ${data.email}.`)
+        }
       }
 
       setSavedName(data.full_name ?? null)
@@ -79,6 +91,19 @@ export default function NomineesPage() {
     }
 
     await load()
+  }
+
+  async function handleResendNotification(nomineeId: string, nomineeEmail: string) {
+    setNotifyError(null)
+    setNotifySuccess(null)
+    const res = await fetch(`/api/vault/nominees/${nomineeId}/notify`, { method: 'POST' })
+    const json = await res.json().catch(() => ({}))
+    if (json.emailFailed) {
+      setNotifyError("We could not send the notification. Please try again.")
+    } else if (json.ok) {
+      setNotifySuccess(`Notification resent to ${nomineeEmail}.`)
+      await load()
+    }
   }
 
   async function handleDelete(id: string) {
@@ -103,6 +128,19 @@ export default function NomineesPage() {
         The people who will be able to access your vault. Maximum 2 nominees.
       </p>
 
+      {notifyError && (
+        <div className="border border-amber-200 bg-amber-50 rounded-lg px-4 py-3 mb-4 flex items-start justify-between gap-3">
+          <p className="text-sm text-amber-800">{notifyError}</p>
+          <button onClick={() => setNotifyError(null)} className="text-amber-600 hover:text-amber-800 flex-shrink-0 text-xs">Dismiss</button>
+        </div>
+      )}
+      {notifySuccess && (
+        <div className="border border-green-200 bg-green-50 rounded-lg px-4 py-3 mb-4 flex items-start justify-between gap-3">
+          <p className="text-sm text-green-800">{notifySuccess}</p>
+          <button onClick={() => setNotifySuccess(null)} className="text-green-700 hover:text-green-800 flex-shrink-0 text-xs">Dismiss</button>
+        </div>
+      )}
+
       {/* Existing nominees */}
       {nominees.map((nominee) => (
         <div key={nominee.id} className="mb-4">
@@ -111,7 +149,8 @@ export default function NomineesPage() {
               <NomineeForm
                 initial={nominee}
                 isPrimaryLocked={primaryExists && !nominee.is_primary}
-                onSave={async (d) => { await handleSave(d) }}
+                showNotifyToggle={false}
+                onSave={async (d, sn) => { await handleSave(d, sn) }}
                 onCancel={() => setEditing(null)}
               />
             </div>
@@ -126,8 +165,24 @@ export default function NomineesPage() {
                 </p>
                 <p className="text-sm text-[#6b7280] mt-0.5">{nominee.relationship}</p>
                 <p className="text-sm text-[#6b7280]">{nominee.phone} · {nominee.email}</p>
+                {nominee.notified && (
+                  <p className="text-xs text-[#6b7280] mt-1">
+                    Notified
+                    {nominee.notified_at
+                      ? ` on ${new Date(nominee.notified_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                      : ''}
+                  </p>
+                )}
               </div>
               <div className="flex gap-3 flex-shrink-0">
+                {nominee.notified && nominee.email && (
+                  <button
+                    onClick={() => handleResendNotification(nominee.id, nominee.email ?? '')}
+                    className="text-xs text-[#6b7280] underline underline-offset-2 hover:text-[#1a1a1a]"
+                  >
+                    Resend notification
+                  </button>
+                )}
                 <button onClick={() => setEditing(nominee)} className="text-sm text-[#1a1a1a] underline underline-offset-2">Edit</button>
                 <button onClick={() => setDeleteConfirm(nominee.id)} className="text-sm text-red-600 underline underline-offset-2">Remove</button>
               </div>
@@ -182,7 +237,8 @@ export default function NomineesPage() {
         <div className="border border-[#e5e7eb] rounded-lg p-6 mb-8">
           <NomineeForm
             isPrimaryLocked={primaryExists}
-            onSave={async (d) => { await handleSave(d) }}
+            showNotifyToggle={true}
+            onSave={async (d, sn) => { await handleSave(d, sn) }}
             onCancel={() => setAdding(false)}
           />
         </div>

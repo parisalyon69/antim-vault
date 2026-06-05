@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import CompletenessScore from '@/components/vault/CompletenessScore'
-import { calculateCompleteness } from '@/lib/vault/completeness'
+import { buildDimensions, calculateCompleteness } from '@/lib/vault/completeness'
 import { VaultActivating } from './activating'
 import { VAULT_PLAN_LABEL } from '@/lib/constants'
 import VaultOnboardingTour from '@/components/vault/VaultOnboardingTour'
@@ -31,16 +31,12 @@ export default async function VaultDashboard() {
     { count: documentCount, error: docErr },
     { count: nomineeCount, error: nomineeErr },
     { data: letter, error: letterErr },
-    { data: bankAssets },
-    { data: insuranceAssets },
     { data: lastTokenData, error: lastTokenErr },
   ] = await Promise.all([
     supabase.from('vault_assets').select('*', { count: 'exact', head: true }).eq('vault_id', vault.id),
     supabase.from('vault_documents').select('*', { count: 'exact', head: true }).eq('vault_id', vault.id),
     supabase.from('vault_nominees').select('*', { count: 'exact', head: true }).eq('vault_id', vault.id),
     supabase.from('vault_letters').select('id').eq('vault_id', vault.id).maybeSingle(),
-    supabase.from('vault_assets').select('id').eq('vault_id', vault.id).eq('category', 'bank_account').limit(1),
-    supabase.from('vault_assets').select('id').eq('vault_id', vault.id).eq('category', 'insurance_policy').limit(1),
     supabase
       .from('vault_release_tokens')
       .select('accessed_at')
@@ -65,15 +61,13 @@ export default async function VaultDashboard() {
   const showTour = vault.onboarding_completed === false
 
   const scoreData = {
-    nomineeCount: nomineeCount ?? 0,
-    documentCount: documentCount ?? 0,
-    assetCount: assetCount ?? 0,
+    hasDocument: (documentCount ?? 0) > 0,
+    hasAsset: (assetCount ?? 0) > 0,
+    hasNominee: (nomineeCount ?? 0) > 0,
     hasLetter: !!letter,
-    hasBankAsset: (bankAssets?.length ?? 0) > 0,
-    hasInsuranceAsset: (insuranceAssets?.length ?? 0) > 0,
   }
 
-  const score = calculateCompleteness(scoreData)
+  const score = calculateCompleteness(buildDimensions(scoreData))
 
   const lastUpdated = vault.updated_at
     ? new Date(vault.updated_at).toLocaleDateString('en-IN', {
@@ -150,7 +144,12 @@ export default async function VaultDashboard() {
       )}
 
       <div className="mb-10">
-        <CompletenessScore {...scoreData} />
+        <CompletenessScore
+          hasDocument={scoreData.hasDocument}
+          hasAsset={scoreData.hasAsset}
+          hasNominee={scoreData.hasNominee}
+          hasLetter={scoreData.hasLetter}
+        />
       </div>
 
       {score < 50 && (

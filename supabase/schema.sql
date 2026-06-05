@@ -281,3 +281,53 @@ ALTER TABLE vaults ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT
 -- Mark all existing active vaults as done to avoid showing the
 -- tour retroactively to users who already set up their vaults.
 UPDATE vaults SET onboarding_completed = TRUE WHERE subscription_status = 'active';
+
+-- ============================================================
+-- v10: Nominee notification timestamp.
+-- The existing 'notified' boolean already tracks whether a
+-- notification has been sent. This adds the timestamp so users
+-- can see when the notification was sent in the UI.
+-- Run in Supabase SQL Editor.
+-- ============================================================
+ALTER TABLE vault_nominees ADD COLUMN IF NOT EXISTS notified_at TIMESTAMPTZ;
+
+-- ============================================================
+-- v11: Reminder emails sent log.
+-- Tracks which reminder emails have been sent. Used to prevent
+-- duplicate sends if the cron runs multiple times in a day.
+-- email_type values: 30_day, 7_day, expiry, doc_expiry_60, doc_expiry_7
+-- document_id is NULL for subscription reminders.
+-- ON DELETE SET NULL on document_id so deleting a document does
+-- not cascade-delete the audit record.
+-- Run in Supabase SQL Editor.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS reminder_emails_sent (
+  id         UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  vault_id   UUID        REFERENCES vaults(id) ON DELETE CASCADE NOT NULL,
+  email_type TEXT        NOT NULL,
+  document_id UUID       REFERENCES vault_documents(id) ON DELETE SET NULL,
+  sent_at    TIMESTAMPTZ DEFAULT NOW(),
+  sent_date  DATE        NOT NULL DEFAULT CURRENT_DATE
+);
+
+CREATE INDEX IF NOT EXISTS idx_reminder_emails_vault_type_date
+  ON reminder_emails_sent (vault_id, email_type, sent_date);
+
+CREATE INDEX IF NOT EXISTS idx_reminder_emails_doc_type_date
+  ON reminder_emails_sent (document_id, email_type, sent_date)
+  WHERE document_id IS NOT NULL;
+
+-- Service-role only access (same model as stripe_webhook_events)
+ALTER TABLE reminder_emails_sent ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no direct access" ON reminder_emails_sent
+  FOR ALL USING (false) WITH CHECK (false);
+GRANT ALL ON TABLE reminder_emails_sent TO service_role;
+
+-- ============================================================
+-- v12: Document expiry date for optional expiry alerting.
+-- Nullable -- most documents do not expire.
+-- Documents with expiry_date set trigger cron email alerts
+-- at 60 days and 7 days before expiry.
+-- Run in Supabase SQL Editor.
+-- ============================================================
+ALTER TABLE vault_documents ADD COLUMN IF NOT EXISTS expiry_date DATE;
