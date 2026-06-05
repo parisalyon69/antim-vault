@@ -240,6 +240,12 @@ export default function DocumentUploader({ vaultId, userId, category, onUploaded
       }
       try {
         finalFile = await buildPdfFromImages(scannedPages)
+        // Guard against assembled PDFs that exceed the 50MB Supabase storage limit
+        const MAX_PDF_BYTES = 50 * 1024 * 1024
+        if (finalFile.size > MAX_PDF_BYTES) {
+          setScanError('The combined PDF is too large (max 50 MB). Try removing some pages or re-scanning at lower quality.')
+          return
+        }
       } catch (err) {
         console.error('[scanner] PDF build failed, uploading individually:', err)
         setScanError('Could not combine pages into one PDF. Uploading each page separately.')

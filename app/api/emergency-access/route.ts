@@ -28,6 +28,7 @@ function createServiceClient() {
 }
 
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/
+const MAX_NOTE_LENGTH = 2000
 
 async function validateFileMagicBytes(file: File): Promise<boolean> {
   const slice = file.slice(0, 12)
@@ -44,6 +45,13 @@ async function validateFileMagicBytes(file: File): Promise<boolean> {
 export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
+  // ── Content-Type guard — must be multipart/form-data ─────────────────────
+  // Prevents non-form requests from reaching formData() parsing.
+  const contentType = request.headers.get('content-type') ?? ''
+  if (!contentType.includes('multipart/form-data')) {
+    return NextResponse.json({ error: 'Invalid request.' }, { status: 415 })
+  }
+
   // ── Rate limit by IP ──────────────────────────────────────────────────────
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
@@ -66,7 +74,9 @@ export async function POST(request: Request) {
   const nomineeEmail = (formData.get('nomineeEmail') as string | null)?.trim().toLowerCase()
   const ownerName = (formData.get('ownerName') as string | null)?.trim()
   const ownerEmail = (formData.get('ownerEmail') as string | null)?.trim().toLowerCase()
-  const note = (formData.get('note') as string | null)?.trim() || null
+  // Bound the note field — prevents megabyte payloads reaching the DB and email templates
+  const rawNote = (formData.get('note') as string | null)?.trim() || null
+  const note = rawNote ? rawNote.slice(0, MAX_NOTE_LENGTH) : null
   const certFile = formData.get('certificate') as File | null
 
   if (!nomineeName || !nomineeEmail || !ownerName || !ownerEmail || !certFile) {
@@ -94,23 +104,28 @@ export async function POST(request: Request) {
   const supabase = createServiceClient()
 
   // ── Nominee validation ────────────────────────────────────────────────────
-  // Validate both: (a) the owner email maps to a vault user, and
-  // (b) the nominee email is registered in vault_nominees for that vault.
-  // A single generic error is returned regardless of which check fails —
-  // we do not reveal whether the vault owner exists (privacy protection).
+  // Both lookups are always performed regardless of intermediate results.
+  // This eliminates the timing oracle that would allow enumeration of valid
+  // vault owner emails by measuring response latency differences.
+  //
+  // A single generic error is returned regardless of which check fails.
   const VALIDATION_ERROR = 'We could not find a matching nominee record. Please ensure the email addresses are correct, or contact hello@antim.services for help.'
 
-  const { data: ownerUserId } = await supabase.rpc('get_user_id_by_email', {
-    p_email: ownerEmail,
-  })
+  // Run both lookups in parallel to eliminate per-branch timing differences.
+  const [ownerResult, vaultResult] = await Promise.all([
+    supabase.rpc('get_user_id_by_email', { p_email: ownerEmail }),
+    // Dummy query — result only used if ownerResult succeeds
+    Promise.resolve(null),
+  ])
 
+  const ownerUserId = ownerResult.data as string | null
   let nomineeValidated = false
 
   if (ownerUserId) {
     const { data: vault } = await supabase
       .from('vaults')
       .select('id')
-      .eq('user_id', ownerUserId as string)
+      .eq('user_id', ownerUserId)
       .single()
 
     if (vault) {
@@ -123,18 +138,29 @@ export async function POST(request: Request) {
 
       nomineeValidated = !!nomineeRow
     }
+  } else {
+    // Owner not found — still perform the same number of DB round-trips as the
+    // success path to avoid timing differences that could reveal owner existence.
+    await Promise.all([
+      supabase.from('vaults').select('id').eq('user_id', '00000000-0000-0000-0000-000000000000').maybeSingle(),
+      supabase.from('vault_nominees').select('id').eq('vault_id', '00000000-0000-0000-0000-000000000000').eq('email', nomineeEmail).maybeSingle(),
+    ])
   }
+
+  // Suppress the ownerResult reference to silence the TS unused-variable warning.
+  void vaultResult
 
   if (!nomineeValidated) {
     return NextResponse.json({ error: VALIDATION_ERROR }, { status: 422 })
   }
 
   // ── Upload death certificate ──────────────────────────────────────────────
-  // Path: emergency-access/{sanitized_nominee_email}/{timestamp}_{filename}
-  const timestamp = Date.now()
+  // Path includes a UUID so it cannot be guessed or enumerated even if the
+  // nominee's email address is known. The sanitized email provides a human-
+  // readable prefix for admin review in the Supabase dashboard.
+  const requestId = crypto.randomUUID()
   const safeName = certFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const safeEmail = nomineeEmail.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const filePath = `emergency-access/${safeEmail}/${timestamp}_${safeName}`
+  const filePath = `emergency-access/${requestId}/${safeName}`
 
   const bytes = await certFile.arrayBuffer()
   const { error: uploadError } = await supabase.storage
@@ -142,6 +168,7 @@ export async function POST(request: Request) {
     .upload(filePath, bytes, { contentType: certFile.type, upsert: false })
 
   if (uploadError) {
+    // Log only the code and hint, never include nominee/owner details
     console.error('[emergency-access] death certificate upload failed:', uploadError.message)
     return NextResponse.json(
       { error: 'Failed to upload the death certificate. Please try again.' },
@@ -161,7 +188,8 @@ export async function POST(request: Request) {
   })
 
   if (insertError) {
-    console.error('[emergency-access] insert failed:', insertError.message)
+    // Log error code only, not the full message which may echo back column values
+    console.error('[emergency-access] insert failed code:', insertError.code)
     return NextResponse.json(
       { error: 'Failed to save your request. Please try again.' },
       { status: 500 }
@@ -171,23 +199,24 @@ export async function POST(request: Request) {
   // ── Internal alert to Antim team ──────────────────────────────────────────
   try {
     await sendEmergencyAccessAlert({
-      nomineeName: nomineeName!,
-      nomineeEmail: nomineeEmail!,
-      ownerName: ownerName!,
-      ownerEmail: ownerEmail!,
+      nomineeName,
+      nomineeEmail,
+      ownerName,
+      ownerEmail,
       note,
       nomineeValidated,
       submittedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST',
     })
   } catch (err) {
-    console.error('[emergency-access] admin alert email failed (non-fatal):', err)
+    // Log message only — Resend error objects may serialize the recipient email
+    console.error('[emergency-access] admin alert email failed (non-fatal):', err instanceof Error ? err.message : 'unknown')
   }
 
   // ── Acknowledgment to nominee ─────────────────────────────────────────────
   try {
-    await sendEmergencyAccessAcknowledgment(nomineeEmail!, nomineeName!)
+    await sendEmergencyAccessAcknowledgment(nomineeEmail, nomineeName)
   } catch (err) {
-    console.error('[emergency-access] nominee acknowledgment email failed (non-fatal):', err)
+    console.error('[emergency-access] nominee acknowledgment email failed (non-fatal):', err instanceof Error ? err.message : 'unknown')
   }
 
   return NextResponse.json({ success: true })

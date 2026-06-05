@@ -38,6 +38,12 @@ export const tokenIpLimiter = createLimiter(10, '1 h')
 // Prevents enumeration attacks and Resend quota exhaustion.
 export const authResetLimiter = createLimiter(5, '1 h')
 
+// ── Nominee notify ────────────────────────────────────────────────────────────
+
+// POST /api/vault/nominees/[id]/notify — 5 emails per user per hour.
+// Prevents Resend quota exhaustion and nominee spam.
+export const nomineeNotifyLimiter = createLimiter(5, '1 h')
+
 // ── Letter encryption ─────────────────────────────────────────────────────────
 
 // POST /api/vault/letter/encrypt — 30 per user per hour.

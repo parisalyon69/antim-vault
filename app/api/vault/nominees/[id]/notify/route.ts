@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { sendNomineeAlertEmail } from '@/lib/email'
 import { logActivity } from '@/lib/activity'
+import { nomineeNotifyLimiter } from '@/lib/ratelimit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,6 +21,17 @@ export async function POST(
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Rate limit by authenticated user ID — prevents Resend quota exhaustion
+  if (nomineeNotifyLimiter) {
+    const { success } = await nomineeNotifyLimiter.limit(`notify:user:${user.id}`)
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      )
+    }
   }
 
   // Verify the user owns this nominee (RLS-scoped query via anon client)

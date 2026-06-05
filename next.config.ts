@@ -14,7 +14,15 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=(self https://js.stripe.com)",
+    // camera=(self) is required for the mobile document scanner feature.
+    // All other unused APIs remain disabled.
+    value: "camera=(self), microphone=(), geolocation=(), payment=(self https://js.stripe.com)",
+  },
+  {
+    // HSTS: force HTTPS for 2 years, include subdomains, and opt in to preload list.
+    // Only effective over HTTPS — ignored on HTTP (local dev).
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
   },
   {
     key: "Content-Security-Policy",

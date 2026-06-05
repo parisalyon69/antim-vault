@@ -8,6 +8,19 @@ function getResend() {
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://vault.antim.services'
 
+// ─── HTML escape ─────────────────────────────────────────────────────────────
+// All user-supplied strings interpolated into email HTML must go through this.
+// Email clients vary in how they handle injected markup — escaping at the
+// interpolation point is the only reliable defence.
+function esc(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 // ─── HTML base template ───────────────────────────────────────────────────────
 
 function baseHtml({
@@ -104,8 +117,8 @@ export async function sendWelcomeEmail(to: string, firstName: string, expiryDate
   const html = baseHtml({
     previewText: `Your payment of Rs. 999 was received, ${firstName}. Your vault is active.`,
     bodyContent: `
-      ${h2(`Hi ${firstName}, your vault is ready.`)}
-      ${p(`Your payment of <strong style="color:#1a1a1a;">&#x20B9;999</strong> was received. Your vault is active for one year${renewalLine ? `, until <strong style="color:#1a1a1a;">${renewalLine}</strong>` : ''}.`)}
+      ${h2(`Hi ${esc(firstName)}, your vault is ready.`)}
+      ${p(`Your payment of <strong style="color:#1a1a1a;">&#x20B9;999</strong> was received. Your vault is active for one year${renewalLine ? `, until <strong style="color:#1a1a1a;">${esc(renewalLine)}</strong>` : ''}.`)}
       ${divider()}
       ${p('Organising these things takes courage. Most people put it off for years. The fact that you have done it means your family will not have to search, guess, or grieve in confusion. That is worth something.')}
       ${divider()}
@@ -160,7 +173,7 @@ export async function sendPaymentFailedEmail(to: string, firstName: string) {
   const html = baseHtml({
     previewText: 'Your payment did not go through. Update your payment method to keep your vault active.',
     bodyContent: `
-      ${h2(`Hi ${firstName}, there was a payment issue.`)}
+      ${h2(`Hi ${esc(firstName)}, there was a payment issue.`)}
       ${p('We were not able to process your Antim vault subscription payment.')}
       ${p('Your vault remains accessible for now. To make sure nothing is interrupted, please update your payment method as soon as you can.')}
       <div style="margin:28px 0;">
@@ -205,12 +218,12 @@ export async function sendNomineeAlertEmail(
   nomineeName: string,
   ownerName: string
 ) {
-  const subject = `${ownerName} has named you as a nominee on their Antim vault`
+  const subject = `${esc(ownerName)} has named you as a nominee on their Antim vault`
   const html = baseHtml({
-    previewText: `${ownerName} has named you as a nominee on their Antim Digital Vault.`,
+    previewText: `${esc(ownerName)} has named you as a nominee on their Antim Digital Vault.`,
     bodyContent: `
-      ${h2(`Dear ${nomineeName},`)}
-      ${p(`${ownerName} has named you as a nominee on their Antim Digital Vault. Antim is a secure place where families store important documents, account details, and a personal letter so that nothing is lost when the time comes.`)}
+      ${h2(`Dear ${esc(nomineeName)},`)}
+      ${p(`${esc(ownerName)} has named you as a nominee on their Antim Digital Vault. Antim is a secure place where families store important documents, account details, and a personal letter so that nothing is lost when the time comes.`)}
       ${p('This is a notification only. You do not have access to anything right now, and you do not need to do anything at this stage.')}
       ${divider()}
       ${p('When the time comes, you can request access to the vault at:')}
@@ -251,13 +264,13 @@ export async function sendEmergencyAccessAlert(data: {
       </div>
       ${divider()}
       <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:20px;">
-        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;width:160px;">Nominee</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;font-weight:500;">${data.nomineeName}</td></tr>
-        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Nominee email</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${data.nomineeEmail}</td></tr>
-        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Vault owner</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;font-weight:500;">${data.ownerName}</td></tr>
-        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Owner email</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${data.ownerEmail}</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;width:160px;">Nominee</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;font-weight:500;">${esc(data.nomineeName)}</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Nominee email</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${esc(data.nomineeEmail)}</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Vault owner</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;font-weight:500;">${esc(data.ownerName)}</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Owner email</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${esc(data.ownerEmail)}</td></tr>
         <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Nominee verified</td><td style="padding:8px 0;font-size:14px;color:${data.nomineeValidated ? '#16a34a' : '#dc2626'};font-weight:500;">${data.nomineeValidated ? 'Yes - found in vault_nominees' : 'No - not found'}</td></tr>
-        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Submitted</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${data.submittedAt}</td></tr>
-        ${data.note ? `<tr><td style="padding:8px 0;font-size:14px;color:#6b7280;vertical-align:top;">Note</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${data.note}</td></tr>` : ''}
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Submitted</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${esc(data.submittedAt)}</td></tr>
+        ${data.note ? `<tr><td style="padding:8px 0;font-size:14px;color:#6b7280;vertical-align:top;">Note</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${esc(data.note)}</td></tr>` : ''}
       </table>
       ${divider()}
       ${p('To approve: update status to \'approved\' in emergency_access_requests, then email the nominee with vault contents or use the existing admin approve flow.', { muted: true, small: true })}
@@ -284,7 +297,7 @@ export async function sendEmergencyAccessAcknowledgment(
   const html = baseHtml({
     previewText: 'We have received your request. The Antim team will verify and contact you within 2 business days.',
     bodyContent: `
-      ${h2(`Dear ${nomineeName},`)}
+      ${h2(`Dear ${esc(nomineeName)},`)}
       ${p('We are deeply sorry for your loss.')}
       ${p('Your request to access the vault has been received. The Antim team will review the death certificate and the details you have provided, and contact you within 2 business days at this email address.')}
       ${p('We may reach out if we need any additional information.')}
@@ -311,17 +324,17 @@ export async function sendReleaseRequestAlert(data: {
 }) {
   const subject = `New vault release request - action required`
   const html = baseHtml({
-    previewText: `New release request from ${data.requestedByName} for ${data.deceasedName}.`,
+    previewText: `New release request from ${esc(data.requestedByName)} for ${esc(data.deceasedName)}.`,
     bodyContent: `
       ${h2('New vault release request')}
       ${p('A nominee has submitted a release request. Review and take action in the admin panel.')}
       ${divider()}
       <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:20px;">
-        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;width:160px;">Deceased</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;font-weight:500;">${data.deceasedName} (${data.deceasedEmail})</td></tr>
-        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Requested by</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;font-weight:500;">${data.requestedByName} (${data.relationship})</td></tr>
-        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Contact</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${data.requestedByEmail}<br>${data.requestedByPhone}</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;width:160px;">Deceased</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;font-weight:500;">${esc(data.deceasedName)} (${esc(data.deceasedEmail)})</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Requested by</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;font-weight:500;">${esc(data.requestedByName)} (${esc(data.relationship)})</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Contact</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${esc(data.requestedByEmail)}<br>${esc(data.requestedByPhone)}</td></tr>
         <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Vault found</td><td style="padding:8px 0;font-size:14px;color:${data.vaultFound ? '#16a34a' : '#dc2626'};font-weight:500;">${data.vaultFound ? 'Yes' : 'No - email not registered'}</td></tr>
-        ${data.note ? `<tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Note</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${data.note}</td></tr>` : ''}
+        ${data.note ? `<tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Note</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${esc(data.note)}</td></tr>` : ''}
       </table>
       <div style="margin:28px 0;">
         ${ctaButton('Review in admin panel', `${APP_URL}/admin`)}
@@ -345,7 +358,7 @@ export async function sendReleaseRequestAcknowledgmentEmail(to: string, nomineeN
   const html = baseHtml({
     previewText: 'We have received your vault access request and will review it within 2 to 3 business days.',
     bodyContent: `
-      ${h2(`Dear ${nomineeName},`)}
+      ${h2(`Dear ${esc(nomineeName)},`)}
       ${p('We are deeply sorry for your loss.')}
       ${p('We have received your request to access the vault. Our team will review the death certificate and supporting details within 2 to 3 business days.')}
       ${p('We may contact you if we need anything additional. Please do not hesitate to reach out if you have questions.')}
@@ -366,7 +379,7 @@ export async function sendReleaseApprovedEmail(to: string, name: string, token: 
   const html = baseHtml({
     previewText: 'Your request has been approved. Use the secure link to access the vault. Valid for 72 hours.',
     bodyContent: `
-      ${h2(`Dear ${name},`)}
+      ${h2(`Dear ${esc(name)},`)}
       ${p('We have reviewed and approved your request to access the vault.')}
       ${p('Use the secure link below to view the contents. This link is valid for 72 hours.')}
       <div style="margin:28px 0;">
@@ -391,10 +404,10 @@ export async function sendReleaseRejectedEmail(to: string, name: string, reason?
   const html = baseHtml({
     previewText: 'We were unable to approve your vault access request at this time.',
     bodyContent: `
-      ${h2(`Dear ${name},`)}
+      ${h2(`Dear ${esc(name)},`)}
       ${p('We have reviewed your request to access the vault.')}
       ${p('Unfortunately, we were not able to approve your request at this time.')}
-      ${reason ? `<div style="background:#fef9f0;border-left:3px solid #B8722C;padding:16px;margin:0 0 16px;border-radius:0 4px 4px 0;">${p(`<strong>Reason:</strong> ${reason}`)}</div>` : ''}
+      ${reason ? `<div style="background:#fef9f0;border-left:3px solid #B8722C;padding:16px;margin:0 0 16px;border-radius:0 4px 4px 0;">${p(`<strong>Reason:</strong> ${esc(reason)}`)}</div>` : ''}
       ${p(`If you believe this is a mistake or have additional documentation to provide, please contact us at <a href="mailto:hello@antim.services" style="color:#4F6F52;">hello@antim.services</a> or WhatsApp ${WHATSAPP_DISPLAY}.`)}
       ${p('We are deeply sorry for your loss.', { muted: true })}
       ${p('The Antim team', { muted: true })}
@@ -424,9 +437,9 @@ export async function sendReleaseAccessedEmail(
   const html = baseHtml({
     previewText: `${nomineeName} accessed your Antim vault on ${date} (IST).`,
     bodyContent: `
-      ${h2(`Hi ${firstName},`)}
+      ${h2(`Hi ${esc(firstName)},`)}
       ${p('This is an automated security notice.')}
-      ${p(`<strong>${nomineeName}</strong> accessed your Antim vault on ${date} (IST).`)}
+      ${p(`<strong>${esc(nomineeName)}</strong> accessed your Antim vault on ${esc(date)} (IST).`)}
       ${p('If you were not expecting this, please contact us immediately.')}
       ${divider()}
       ${p(`Contact us at <a href="mailto:hello@antim.services" style="color:#4F6F52;">hello@antim.services</a> or WhatsApp ${WHATSAPP_DISPLAY}.`, { muted: true })}
@@ -450,7 +463,7 @@ export async function sendSevenDayNudgeEmail(to: string, firstName: string) {
   const html = baseHtml({
     previewText: 'Your family still does not know where to start. It takes 20 minutes to change that.',
     bodyContent: `
-      ${h2(`Hi ${firstName},`)}
+      ${h2(`Hi ${esc(firstName)},`)}
       ${p('A week has passed and your vault is still empty.')}
       ${p('Your family would not know where to start if something happened today. We know life gets busy. But this takes about 20 minutes and protects years of work.')}
       ${divider()}
@@ -484,7 +497,7 @@ export async function sendNomineeNudgeEmail(to: string, firstName: string) {
   const html = baseHtml({
     previewText: 'Your vault is only useful if someone knows to open it. Add a nominee.',
     bodyContent: `
-      ${h2(`Hi ${firstName},`)}
+      ${h2(`Hi ${esc(firstName)},`)}
       ${p('You have started your vault. There is one thing missing.')}
       ${p('A nominee. Without one, your family will not know to look here when the time comes. The vault only works if someone knows it exists and knows to request access.')}
       ${p('It takes two minutes to add a nominee. Their name, email, and phone. That is all.')}
@@ -507,8 +520,8 @@ export async function sendRenewal30DayEmail(to: string, firstName: string, renew
   const html = baseHtml({
     previewText: 'Your Antim vault subscription renews in 30 days. Your family\'s documents are safe.',
     bodyContent: `
-      ${h2(`Hi ${firstName}, your vault renews in 30 days.`)}
-      ${p(`Your Antim vault subscription renews on ${renewalDate}. Everything stored in your vault -- documents, accounts, nominees, and your personal letter -- will remain safe and accessible.`)}
+      ${h2(`Hi ${esc(firstName)}, your vault renews in 30 days.`)}
+      ${p(`Your Antim vault subscription renews on ${esc(renewalDate)}. Everything stored in your vault -- documents, accounts, nominees, and your personal letter -- will remain safe and accessible.`)}
       ${p('No action is needed if your payment details are current. Log in any time to review your vault before renewal.')}
       <div style="margin:28px 0;">
         ${ctaButton('Review my vault', `${APP_URL}/vault`)}
@@ -525,8 +538,8 @@ export async function sendRenewal7DayEmail(to: string, firstName: string, renewa
   const html = baseHtml({
     previewText: 'Your vault subscription renews in 7 days. Make sure your payment details are current.',
     bodyContent: `
-      ${h2(`Hi ${firstName}, your vault renews in 7 days.`)}
-      ${p(`Your Antim vault subscription renews on ${renewalDate}. To avoid any interruption to your vault, please make sure your payment details are up to date.`)}
+      ${h2(`Hi ${esc(firstName)}, your vault renews in 7 days.`)}
+      ${p(`Your Antim vault subscription renews on ${esc(renewalDate)}. To avoid any interruption to your vault, please make sure your payment details are up to date.`)}
       <div style="margin:28px 0;">
         ${ctaButton('Check my vault', `${APP_URL}/vault`)}
       </div>
@@ -543,7 +556,7 @@ export async function sendRenewalExpiredEmail(to: string, firstName: string) {
   const html = baseHtml({
     previewText: 'Your vault subscription has expired. Your data is safely retained for 90 days.',
     bodyContent: `
-      ${h2(`Hi ${firstName}, your vault subscription has expired.`)}
+      ${h2(`Hi ${esc(firstName)}, your vault subscription has expired.`)}
       ${p('Your Antim vault is currently inactive. Your documents, accounts, and personal letter are safely retained for 90 days. You can reactivate at any time.')}
       <div style="margin:28px 0;">
         ${ctaButton('Renew my vault', `${APP_URL}`)}
@@ -564,8 +577,8 @@ export async function sendDocExpiry60Email(to: string, firstName: string, docume
   const html = baseHtml({
     previewText: `${documentName} in your Antim vault expires in 60 days.`,
     bodyContent: `
-      ${h2(`Hi ${firstName}, a document is expiring soon.`)}
-      ${p(`Your document <strong>${documentName}</strong> expires on ${expiryDate}.`)}
+      ${h2(`Hi ${esc(firstName)}, a document is expiring soon.`)}
+      ${p(`Your document <strong>${esc(documentName)}</strong> expires on ${esc(expiryDate)}.`)}
       ${p('If this document needs to be renewed or replaced, please do so and upload the updated version to your vault so your family always has the most current copy.')}
       <div style="margin:28px 0;">
         ${ctaButton('Update my documents', `${APP_URL}/vault/documents`)}
@@ -581,8 +594,8 @@ export async function sendDocExpiry7Email(to: string, firstName: string, documen
   const html = baseHtml({
     previewText: `${documentName} expires in 7 days. Update it in your vault.`,
     bodyContent: `
-      ${h2(`Hi ${firstName}, act soon.`)}
-      ${p(`Your document <strong>${documentName}</strong> expires on ${expiryDate} -- that is 7 days from now.`)}
+      ${h2(`Hi ${esc(firstName)}, act soon.`)}
+      ${p(`Your document <strong>${esc(documentName)}</strong> expires on ${esc(expiryDate)} -- that is 7 days from now.`)}
       ${p('Please renew it and upload the updated version to your vault.')}
       <div style="margin:28px 0;">
         ${ctaButton('Update my documents', `${APP_URL}/vault/documents`)}
