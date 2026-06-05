@@ -106,13 +106,13 @@ export async function POST(request: NextRequest) {
           throw new Error(`Supabase upsert failed: ${error.message}`)
         }
 
-        // Send welcome email (best-effort — do not block the webhook response)
+        // Send payment confirmation email (best-effort — do not block the webhook response)
         try {
           const { data: { user: vaultUser } } = await supabase.auth.admin.getUserById(userId)
           if (vaultUser?.email) {
             const firstName = (vaultUser.user_metadata?.full_name as string | undefined)
               ?.split(' ')[0] ?? 'there'
-            await sendWelcomeEmail(vaultUser.email, firstName)
+            await sendWelcomeEmail(vaultUser.email, firstName, expiryDate.toISOString())
           }
         } catch (emailErr) {
           const msg = emailErr instanceof Error ? emailErr.message : String(emailErr)

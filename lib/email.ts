@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import { ADMIN_EMAIL, FROM_EMAIL, WHATSAPP_DISPLAY } from '@/lib/constants'
+import { ADMIN_EMAIL, FROM_EMAIL, FROM_EMAIL_HELLO, WHATSAPP_DISPLAY } from '@/lib/constants'
 
 // Lazy-initialize so the constructor doesn't throw at build time when the key is absent
 function getResend() {
@@ -86,36 +86,53 @@ function divider(): string {
   return `<div style="height:1px;background-color:#f0ece4;margin:24px 0;"></div>`
 }
 
-// ─── Welcome email ────────────────────────────────────────────────────────────
-// Sent after vault is activated (post-payment webhook)
+// ─── Payment confirmation / welcome email ─────────────────────────────────────
+// Sent after vault is activated (checkout.session.completed webhook).
+// expiryDate is an ISO string — the subscription_expiry_date set on the vault row.
+// Sent from hello@antim.services so replies land in the support inbox directly.
 
-export async function sendWelcomeEmail(to: string, firstName: string) {
+export async function sendWelcomeEmail(to: string, firstName: string, expiryDate?: string) {
+  const renewalLine = expiryDate
+    ? new Date(expiryDate).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : null
+
   const subject = 'Your Antim vault is ready'
   const html = baseHtml({
-    previewText: `Your vault is set up, ${firstName}. Here is where to start.`,
+    previewText: `Your payment of Rs. 999 was received, ${firstName}. Your vault is active.`,
     bodyContent: `
       ${h2(`Hi ${firstName}, your vault is ready.`)}
-      ${p('You have just done something most people never do. Your family will thank you for it.')}
-      ${p('Your Antim vault is where they will find everything they need when the time comes. Accounts, documents, your personal letter. It all lives here, safely.')}
+      ${p(`Your payment of <strong style="color:#1a1a1a;">&#x20B9;999</strong> was received. Your vault is active for one year${renewalLine ? `, until <strong style="color:#1a1a1a;">${renewalLine}</strong>` : ''}.`)}
       ${divider()}
-      ${p('<strong style="color:#1a1a1a;">Three things to do first:</strong>')}
+      ${p('Organising these things takes courage. Most people put it off for years. The fact that you have done it means your family will not have to search, guess, or grieve in confusion. That is worth something.')}
+      ${divider()}
+      ${p('<strong style="color:#1a1a1a;">Four things to add to your vault:</strong>')}
       <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;width:100%;">
         <tr>
           <td style="padding:10px 0;border-bottom:1px solid #f0ece4;">
             <span style="font-size:15px;color:#4F6F52;font-weight:bold;">1</span>
-            &nbsp;&nbsp;<span style="font-size:15px;color:#374151;">Add your accounts and assets</span>
+            &nbsp;&nbsp;<span style="font-size:15px;color:#374151;">Documents: your will, insurance policies, property papers</span>
           </td>
         </tr>
         <tr>
           <td style="padding:10px 0;border-bottom:1px solid #f0ece4;">
             <span style="font-size:15px;color:#4F6F52;font-weight:bold;">2</span>
-            &nbsp;&nbsp;<span style="font-size:15px;color:#374151;">Name a nominee who will receive access</span>
+            &nbsp;&nbsp;<span style="font-size:15px;color:#374151;">Accounts and assets: banks, investments, property</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #f0ece4;">
+            <span style="font-size:15px;color:#4F6F52;font-weight:bold;">3</span>
+            &nbsp;&nbsp;<span style="font-size:15px;color:#374151;">A nominee who will receive access when the time comes</span>
           </td>
         </tr>
         <tr>
           <td style="padding:10px 0;">
-            <span style="font-size:15px;color:#4F6F52;font-weight:bold;">3</span>
-            &nbsp;&nbsp;<span style="font-size:15px;color:#374151;">Write a personal letter to the people you love</span>
+            <span style="font-size:15px;color:#4F6F52;font-weight:bold;">4</span>
+            &nbsp;&nbsp;<span style="font-size:15px;color:#374151;">A personal letter to your family, private until then</span>
           </td>
         </tr>
       </table>
@@ -126,7 +143,13 @@ export async function sendWelcomeEmail(to: string, firstName: string) {
       ${p('The Antim team', { muted: true })}
     `,
   })
-  return getResend().emails.send({ from: FROM_EMAIL, replyTo: ADMIN_EMAIL, to, subject, html })
+  return getResend().emails.send({
+    from: FROM_EMAIL_HELLO,
+    replyTo: ADMIN_EMAIL,
+    to,
+    subject,
+    html,
+  })
 }
 
 // ─── Payment failed — vault owner alert ──────────────────────────────────────

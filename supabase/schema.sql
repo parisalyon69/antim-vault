@@ -268,3 +268,16 @@ CREATE POLICY "release-documents: deny direct access - delete"
 -- Run in Supabase SQL Editor.
 -- ============================================================
 ALTER TABLE vaults ADD COLUMN IF NOT EXISTS subscription_expiry_date TIMESTAMPTZ;
+
+-- ============================================================
+-- v9: Guided first-use onboarding tour flag.
+-- Defaults FALSE for new vaults. Existing active vaults are
+-- immediately marked complete so they never see the new tour.
+-- New users see a 4-step "Getting started" panel on the
+-- dashboard until they dismiss it or complete all steps.
+-- Run in Supabase SQL Editor.
+-- ============================================================
+ALTER TABLE vaults ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT FALSE;
+-- Mark all existing active vaults as done to avoid showing the
+-- tour retroactively to users who already set up their vaults.
+UPDATE vaults SET onboarding_completed = TRUE WHERE subscription_status = 'active';

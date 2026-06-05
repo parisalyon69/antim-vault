@@ -8,8 +8,10 @@ export interface Vault {
   subscription_status: SubscriptionStatus
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
+  subscription_expiry_date: string | null
   consent_given: boolean
   consent_given_at: string | null
+  onboarding_completed: boolean
 }
 
 export interface VaultAsset {

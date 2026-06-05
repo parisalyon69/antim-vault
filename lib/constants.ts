@@ -5,6 +5,9 @@
 export const ADMIN_EMAIL = 'hello@antim.services'
 export const NOREPLY_EMAIL = 'noreply@antim.services'
 export const FROM_EMAIL = `Antim <${NOREPLY_EMAIL}>`
+// Used for the payment confirmation email — sent from hello@ so replies
+// land in the same inbox and don't look like an automated no-reply.
+export const FROM_EMAIL_HELLO = `Antim <hello@antim.services>`
 
 // ── WhatsApp ──────────────────────────────────────────────────────────────────
 export const WHATSAPP_NUMBER = '33745722899'

@@ -81,6 +81,15 @@ export default function SettingsPage() {
     router.push('/')
   }
 
+  async function handleRestartTour() {
+    await fetch('/api/vault/complete-onboarding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed: false }),
+    })
+    router.push('/vault')
+  }
+
   if (loading) return (
     <div style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>
       <div className="h-8 w-28 bg-[#e5e7eb] rounded animate-pulse mb-8" />
@@ -191,6 +200,25 @@ export default function SettingsPage() {
               Sign out
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* Help */}
+      <section className="mb-10">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-[#6b7280] mb-4" style={{ fontFamily: 'var(--font-lora, Lora, Georgia, serif)' }}>
+          Help
+        </h2>
+        <div className="border border-[#e5e7eb] rounded-lg p-6">
+          <p className="text-sm text-[#1a1a1a] mb-1 font-medium">Setup tour</p>
+          <p className="text-sm text-[#6b7280] mb-3">
+            See the getting started guide again from your vault overview.
+          </p>
+          <button
+            onClick={handleRestartTour}
+            className="border border-[#1a1a1a] text-[#1a1a1a] rounded-md px-4 py-2.5 text-sm font-medium hover:bg-[#fafaf9] transition-colors"
+          >
+            Show setup tour
+          </button>
         </div>
       </section>
 

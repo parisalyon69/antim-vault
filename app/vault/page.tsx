@@ -1,11 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import CompletenessScore from '@/components/vault/CompletenessScore'
 import { calculateCompleteness } from '@/lib/vault/completeness'
 import { VaultActivating } from './activating'
 import { VAULT_PLAN_LABEL } from '@/lib/constants'
+import VaultOnboardingTour from '@/components/vault/VaultOnboardingTour'
 
 export default async function VaultDashboard() {
   const supabase = await createClient()
@@ -17,7 +16,7 @@ export default async function VaultDashboard() {
 
   const { data: vault } = await supabase
     .from('vaults')
-    .select('id, updated_at, subscription_status')
+    .select('id, updated_at, subscription_status, onboarding_completed')
     .eq('user_id', user.id)
     .single()
 
@@ -59,16 +58,11 @@ export default async function VaultDashboard() {
   if (letterErr) console.error('[vault/dashboard] vault_letters query:', letterErr.message)
   if (lastTokenErr) console.error('[vault/dashboard] vault_release_tokens query:', lastTokenErr.message)
 
-  // Redirect new users (empty vault, no onboarding cookie) to the onboarding flow
-  const cookieStore = await cookies()
-  const onboardingDone = cookieStore.get('onboarding_done')
-  const isEmpty =
-    (assetCount ?? 0) === 0 &&
-    (documentCount ?? 0) === 0 &&
-    (nomineeCount ?? 0) === 0
-  if (!onboardingDone && isEmpty) {
-    redirect('/vault/onboarding')
-  }
+  // Show the guided tour to new users until they dismiss it or complete all steps.
+  // onboarding_completed is set to true when the user dismisses the tour panel.
+  // The v9 migration sets it to true for all existing active vaults so returning
+  // users never see it retroactively.
+  const showTour = vault.onboarding_completed === false
 
   const scoreData = {
     nomineeCount: nomineeCount ?? 0,
@@ -145,6 +139,15 @@ export default async function VaultDashboard() {
         <p className="text-xs text-[#9ca3af] mb-8">Last accessed by nominee: {lastAccessed}</p>
       )}
       {!lastAccessed && lastUpdated && <div className="mb-8" />}
+
+      {showTour && (
+        <VaultOnboardingTour
+          hasDocument={(documentCount ?? 0) > 0}
+          hasAsset={(assetCount ?? 0) > 0}
+          hasNominee={(nomineeCount ?? 0) > 0}
+          hasLetter={!!letter}
+        />
+      )}
 
       <div className="mb-10">
         <CompletenessScore {...scoreData} />
