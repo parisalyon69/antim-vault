@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   }
 
   if (rejectedRequest?.vault_id) {
-    await logActivity(service, rejectedRequest.vault_id, 'release_rejected', {
+    await logActivity(service, rejectedRequest.vault_id, 'release_rejected', `Vault access request rejected for ${nominee_name}`, {
       nominee_name,
       nominee_email,
       reason,

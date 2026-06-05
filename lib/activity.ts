@@ -9,12 +9,14 @@ export async function logActivity(
   supabase: AnySupabaseClient,
   vaultId: string,
   action: string,
+  description: string,
   details?: Record<string, unknown>
 ): Promise<void> {
   try {
     await supabase.from('vault_activity_log').insert({
       vault_id: vaultId,
       action,
+      description,
       details: details ?? null,
     })
   } catch {

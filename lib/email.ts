@@ -207,13 +207,89 @@ export async function sendNomineeAlertEmail(
 ) {
   const subject = `${ownerName} has named you as a nominee on their Antim vault`
   const html = baseHtml({
-    previewText: `${ownerName} has named you as a nominee on their Antim vault.`,
+    previewText: `${ownerName} has named you as a nominee on their Antim Digital Vault.`,
     bodyContent: `
       ${h2(`Dear ${nomineeName},`)}
       ${p(`${ownerName} has named you as a nominee on their Antim Digital Vault. Antim is a secure place where families store important documents, account details, and a personal letter so that nothing is lost when the time comes.`)}
-      ${p('This is a notification only. You do not have access to anything right now, and you do not need to do anything at this stage. When the time comes, the family will be in touch with you directly.')}
+      ${p('This is a notification only. You do not have access to anything right now, and you do not need to do anything at this stage.')}
       ${divider()}
-      ${p(`If you have any questions, you can reach us at hello@antim.services.`, { muted: true })}
+      ${p('When the time comes, you can request access to the vault at:')}
+      <p style="font-size:15px;line-height:1.65;color:#374151;margin:0 0 16px;">
+        <a href="${APP_URL}/emergency-access" style="color:#4F6F52;text-decoration:underline;">${APP_URL}/emergency-access</a>
+      </p>
+      ${p('You will need to provide a death certificate. The Antim team will verify the request and respond within 2 business days.', { muted: true })}
+      ${p(`Questions? You can reach us at <a href="mailto:hello@antim.services" style="color:#4F6F52;">hello@antim.services</a>.`, { muted: true })}
+      ${p('The Antim team', { muted: true })}
+    `,
+  })
+  return getResend().emails.send({ from: FROM_EMAIL_HELLO, replyTo: ADMIN_EMAIL, to, subject, html })
+}
+
+// ─── Emergency access request — internal admin alert ─────────────────────────
+// Sent to hello@antim.services when a nominee submits an emergency access request.
+// To manually approve: update status to 'approved' in the emergency_access_requests
+// table in Supabase, then email the nominee with vault contents or a release token.
+
+export async function sendEmergencyAccessAlert(data: {
+  nomineeName: string
+  nomineeEmail: string
+  ownerName: string
+  ownerEmail: string
+  note: string | null
+  nomineeValidated: boolean
+  submittedAt: string
+}) {
+  const subject = 'URGENT: Emergency access request received — action required'
+  const html = baseHtml({
+    previewText: `Emergency access request from ${data.nomineeName} for ${data.ownerName}. Review required.`,
+    bodyContent: `
+      ${h2('Emergency access request')}
+      ${p('A nominee has submitted an emergency access request. Please review the death certificate in Supabase Storage and take action.')}
+      <div style="background:#fef9f0;border-left:3px solid #B8722C;padding:12px 16px;margin:0 0 20px;border-radius:0 4px 4px 0;">
+        <p style="font-size:13px;color:#92400e;margin:0;font-weight:600;">ACTION REQUIRED: Review and manually approve or reject in Supabase.</p>
+        <p style="font-size:13px;color:#92400e;margin:4px 0 0;">Table: emergency_access_requests | Death certificate: emergency-documents bucket</p>
+      </div>
+      ${divider()}
+      <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-bottom:20px;">
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;width:160px;">Nominee</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;font-weight:500;">${data.nomineeName}</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Nominee email</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${data.nomineeEmail}</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Vault owner</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;font-weight:500;">${data.ownerName}</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Owner email</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${data.ownerEmail}</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Nominee verified</td><td style="padding:8px 0;font-size:14px;color:${data.nomineeValidated ? '#16a34a' : '#dc2626'};font-weight:500;">${data.nomineeValidated ? 'Yes - found in vault_nominees' : 'No - not found'}</td></tr>
+        <tr><td style="padding:8px 0;font-size:14px;color:#6b7280;">Submitted</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${data.submittedAt}</td></tr>
+        ${data.note ? `<tr><td style="padding:8px 0;font-size:14px;color:#6b7280;vertical-align:top;">Note</td><td style="padding:8px 0;font-size:14px;color:#1a1a1a;">${data.note}</td></tr>` : ''}
+      </table>
+      ${divider()}
+      ${p('To approve: update status to \'approved\' in emergency_access_requests, then email the nominee with vault contents or use the existing admin approve flow.', { muted: true, small: true })}
+      ${p('The Antim system', { muted: true })}
+    `,
+  })
+  return getResend().emails.send({
+    from: FROM_EMAIL,
+    replyTo: ADMIN_EMAIL,
+    to: ADMIN_EMAIL,
+    subject,
+    html,
+  })
+}
+
+// ─── Emergency access request — nominee acknowledgment ────────────────────────
+// Sent to the nominee to confirm their request was received
+
+export async function sendEmergencyAccessAcknowledgment(
+  to: string,
+  nomineeName: string
+) {
+  const subject = 'Your emergency access request has been received'
+  const html = baseHtml({
+    previewText: 'We have received your request. The Antim team will verify and contact you within 2 business days.',
+    bodyContent: `
+      ${h2(`Dear ${nomineeName},`)}
+      ${p('We are deeply sorry for your loss.')}
+      ${p('Your request to access the vault has been received. The Antim team will review the death certificate and the details you have provided, and contact you within 2 business days at this email address.')}
+      ${p('We may reach out if we need any additional information.')}
+      ${divider()}
+      ${p(`If you have questions or need to send additional documents, please write to us at <a href="mailto:hello@antim.services" style="color:#4F6F52;">hello@antim.services</a>. We are here to help.`, { muted: true })}
       ${p('The Antim team', { muted: true })}
     `,
   })

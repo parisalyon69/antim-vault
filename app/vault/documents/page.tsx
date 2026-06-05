@@ -53,10 +53,21 @@ export default function DocumentsPage() {
   useEffect(() => { load() }, [load])
 
   async function handleSaveExpiry(docId: string) {
+    const doc = docs.find((d) => d.id === docId)
     await supabase
       .from('vault_documents')
       .update({ expiry_date: expiryInput || null })
       .eq('id', docId)
+    if (doc) {
+      const expiryLabel = expiryInput
+        ? new Date(expiryInput + 'T12:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'removed'
+      await logActivity(
+        supabase, vaultId!, 'document_expiry_set',
+        `Document expiry ${expiryInput ? 'set to ' + expiryLabel : 'removed'}: ${doc.file_name}`,
+        { file_name: doc.file_name, expiry_date: expiryInput || null }
+      )
+    }
     setEditingExpiry(null)
     setExpiryInput('')
     await load()
@@ -67,7 +78,7 @@ export default function DocumentsPage() {
     const s = createStorageClient()
     await s.storage.from('vault-documents').remove([doc.file_path])
     await supabase.from('vault_documents').delete().eq('id', doc.id)
-    await logActivity(supabase, vaultId!, 'document_deleted', {
+    await logActivity(supabase, vaultId!, 'document_deleted', `Deleted document: ${doc.file_name}`, {
       file_name: doc.file_name,
       category: doc.category,
     })

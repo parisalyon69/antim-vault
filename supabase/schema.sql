@@ -331,3 +331,89 @@ GRANT ALL ON TABLE reminder_emails_sent TO service_role;
 -- Run in Supabase SQL Editor.
 -- ============================================================
 ALTER TABLE vault_documents ADD COLUMN IF NOT EXISTS expiry_date DATE;
+
+-- ============================================================
+-- v13: Emergency access requests table.
+-- Public-facing form at /emergency-access lets named nominees
+-- submit a death certificate and request vault access.
+-- The Antim team reviews manually in Supabase.
+--
+-- To approve a request:
+--   1. Verify the death certificate in Storage > emergency-documents
+--   2. Update status to 'approved', set reviewed_at = NOW(), reviewed_by = name
+--   3. Use the admin approve flow (/api/admin/approve) to generate a release
+--      token, OR email the nominee directly with vault contents.
+-- To reject: set status to 'rejected', email nominee at nominee_email.
+--
+-- RLS: service_role only. No direct client access.
+-- Run in Supabase SQL Editor.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS emergency_access_requests (
+  id                     UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  nominee_name           TEXT        NOT NULL,
+  nominee_email          TEXT        NOT NULL,
+  owner_name             TEXT        NOT NULL,
+  owner_email            TEXT        NOT NULL,
+  death_certificate_path TEXT,
+  note                   TEXT,
+  status                 TEXT        NOT NULL DEFAULT 'pending',
+  created_at             TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at            TIMESTAMPTZ,
+  reviewed_by            TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_access_status
+  ON emergency_access_requests (status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_access_nominee_email
+  ON emergency_access_requests (nominee_email);
+
+ALTER TABLE emergency_access_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no direct access" ON emergency_access_requests
+  FOR ALL USING (false) WITH CHECK (false);
+GRANT ALL ON TABLE emergency_access_requests TO service_role;
+
+-- Storage: emergency-documents bucket.
+-- Create the bucket via Supabase dashboard: Storage > New Bucket
+--   Name: emergency-documents
+--   Public: NO
+-- Then apply these policies to lock it to service_role only:
+
+CREATE POLICY "emergency-documents: deny direct access - select"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'emergency-documents' AND false);
+
+CREATE POLICY "emergency-documents: deny direct access - insert"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'emergency-documents' AND false);
+
+CREATE POLICY "emergency-documents: deny direct access - delete"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'emergency-documents' AND false);
+
+-- ============================================================
+-- v14: Add description column to vault_activity_log.
+-- Human-readable summary of each action (e.g. "Uploaded document: will.pdf").
+-- Backfills existing rows with an empty string to satisfy NOT NULL.
+-- The logActivity utility now populates this on every write.
+-- Run in Supabase SQL Editor.
+-- ============================================================
+ALTER TABLE vault_activity_log ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+
+-- RLS INSERT policy so authenticated users can write their own activity logs.
+-- (SELECT policy already exists from v3.)
+-- Skip if already created from a prior migration attempt.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'vault_activity_log'
+      AND policyname = 'own activity only - insert'
+  ) THEN
+    EXECUTE $policy$
+      CREATE POLICY "own activity only - insert" ON vault_activity_log
+        FOR INSERT WITH CHECK (vault_id IN (SELECT id FROM vaults WHERE user_id = auth.uid()))
+    $policy$;
+  END IF;
+END;
+$$;

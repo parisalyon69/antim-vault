@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: '/vault/documents', label: 'Documents' },
   { href: '/vault/nominees', label: 'Nominees' },
   { href: '/vault/letter', label: 'Personal letter' },
+  { href: '/vault/activity', label: 'Activity' },
   { href: '/vault/settings', label: 'Settings' },
 ]
 

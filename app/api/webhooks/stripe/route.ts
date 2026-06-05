@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
           .eq('user_id', userId)
           .single()
         if (newVault?.id) {
-          await logActivity(supabase, newVault.id, 'vault_activated', {
+          await logActivity(supabase, newVault.id, 'vault_activated', 'Vault activated', {
             stripe_customer_id: customerId,
           })
         }
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
           .select('id')
           .single()
         if (updatedVault?.id) {
-          await logActivity(supabase, updatedVault.id, 'subscription_status_changed', {
+          await logActivity(supabase, updatedVault.id, 'subscription_status_changed', `Subscription status changed to ${newStatus}`, {
             status: newStatus,
             stripe_status: sub.status,
           })
@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
           .select('id')
           .single()
         if (cancelledVault?.id) {
-          await logActivity(supabase, cancelledVault.id, 'subscription_status_changed', {
+          await logActivity(supabase, cancelledVault.id, 'subscription_status_changed', 'Subscription cancelled', {
             status: 'inactive',
           })
         }
@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
           .select('id, user_id')
           .single()
         if (pastDueVault?.id) {
-          await logActivity(supabase, pastDueVault.id, 'subscription_status_changed', {
+          await logActivity(supabase, pastDueVault.id, 'subscription_status_changed', 'Subscription payment failed', {
             status: 'past_due',
           })
         }

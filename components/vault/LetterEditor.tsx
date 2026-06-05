@@ -82,7 +82,7 @@ export default function LetterEditor({ vaultId, initialEncrypted }: Props) {
     setIsDirty(false)
     setSaveState('saved')
     setTimeout(() => setSaveState('idle'), 3000)
-    await logActivity(supabase, vaultId, 'letter_saved', {})
+    await logActivity(supabase, vaultId, 'letter_saved', 'Personal letter updated')
   }, [supabase, vaultId])
 
   // Auto-save every 30 seconds

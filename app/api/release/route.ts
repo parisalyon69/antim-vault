@@ -153,7 +153,7 @@ export async function POST(request: Request) {
 
   // Log activity on the vault (if found)
   if (vaultId) {
-    await logActivity(supabase, vaultId, 'release_request_submitted', {
+    await logActivity(supabase, vaultId, 'release_request_submitted', `Release request submitted by ${yourName}`, {
       requested_by: yourName,
       requested_by_email: yourEmail,
     })

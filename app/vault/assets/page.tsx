@@ -65,20 +65,22 @@ export default function AssetsPage() {
         .update({ ...data, updated_at: new Date().toISOString() })
         .eq('id', editing.id)
       if (!error) {
-        await logActivity(supabase, vaultId, 'asset_updated', {
-          category: data.category,
-          institution_name: data.institution_name,
-        })
+        await logActivity(
+          supabase, vaultId, 'asset_updated',
+          `Updated asset: ${data.institution_name ?? ASSET_CATEGORY_LABELS[data.category as AssetCategory] ?? data.category}`,
+          { category: data.category, institution_name: data.institution_name }
+        )
         setEditing(null)
         await load()
       }
     } else {
       const { error } = await supabase.from('vault_assets').insert({ ...data, vault_id: vaultId })
       if (!error) {
-        await logActivity(supabase, vaultId, 'asset_added', {
-          category: data.category,
-          institution_name: data.institution_name,
-        })
+        await logActivity(
+          supabase, vaultId, 'asset_added',
+          `Added asset: ${data.institution_name ?? ASSET_CATEGORY_LABELS[data.category as AssetCategory] ?? data.category}`,
+          { category: data.category, institution_name: data.institution_name }
+        )
         setAdding(null)
         await load()
       }
@@ -88,10 +90,11 @@ export default function AssetsPage() {
   async function handleDelete(id: string) {
     const asset = assets.find((a) => a.id === id)
     await supabase.from('vault_assets').delete().eq('id', id)
-    await logActivity(supabase, vaultId!, 'asset_deleted', {
-      category: asset?.category,
-      institution_name: asset?.institution_name,
-    })
+    await logActivity(
+      supabase, vaultId!, 'asset_deleted',
+      `Deleted asset: ${asset?.institution_name ?? asset?.category ?? 'Unknown'}`,
+      { category: asset?.category, institution_name: asset?.institution_name }
+    )
     setDeleteConfirm(null)
     await load()
   }

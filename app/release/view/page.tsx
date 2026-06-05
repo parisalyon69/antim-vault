@@ -77,7 +77,7 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
     .eq('id', releaseToken.id)
 
   // Log vault access
-  await logActivity(supabase, vaultId, 'vault_accessed_by_nominee', {})
+  await logActivity(supabase, vaultId, 'vault_accessed_by_nominee', 'Vault accessed by nominee')
 
   // Notify vault owner (best-effort)
   try {

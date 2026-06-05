@@ -129,6 +129,21 @@ export interface VaultActivityLog {
   id: string
   vault_id: string
   action: string
+  description: string
   details: Record<string, unknown> | null
   created_at: string
+}
+
+export interface EmergencyAccessRequest {
+  id: string
+  nominee_name: string
+  nominee_email: string
+  owner_name: string
+  owner_email: string
+  death_certificate_path: string | null
+  note: string | null
+  status: 'pending' | 'under_review' | 'approved' | 'rejected'
+  created_at: string
+  reviewed_at: string | null
+  reviewed_by: string | null
 }

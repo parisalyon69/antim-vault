@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     console.error('[admin/approve] status update failed:', statusError.message)
   }
 
-  await logActivity(service, vault_id, 'release_approved', {
+  await logActivity(service, vault_id, 'release_approved', `Vault access approved for ${nominee_name}`, {
     nominee_name,
     nominee_email,
   })

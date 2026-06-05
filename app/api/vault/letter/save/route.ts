@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { encryptLetter } from '@/lib/vault/encryption'
+import { logActivity } from '@/lib/activity'
 
 const MAX_CONTENT_LENGTH = 50_000 // characters
 
@@ -55,6 +56,9 @@ export async function POST(request: Request) {
     console.error('[api/vault/letter/save] upsert failed:', error.code, error.message)
     return NextResponse.json({ error: 'Failed to save letter' }, { status: 500 })
   }
+
+  // Log without including any letter content — never log the letter body.
+  await logActivity(supabase, vaultId, 'letter_updated', 'Personal letter updated')
 
   return NextResponse.json({ success: true })
 }

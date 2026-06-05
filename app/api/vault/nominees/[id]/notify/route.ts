@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { sendNomineeAlertEmail } from '@/lib/email'
+import { logActivity } from '@/lib/activity'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -59,8 +60,12 @@ export async function POST(
     if (updateErr) {
       console.error('[nominees/notify] update failed:', updateErr.message)
       // Return ok:true anyway -- email sent, DB update just didn't stick.
-      // User can refresh and the notified indicator might be missing but email was sent.
     }
+
+    await logActivity(supabase, nominee.vault_id, 'nominee_notified', `Notified nominee: ${nominee.full_name}`, {
+      nominee_name: nominee.full_name,
+      nominee_email: nominee.email,
+    })
   }
 
   return NextResponse.json({ ok: !emailFailed, emailFailed })

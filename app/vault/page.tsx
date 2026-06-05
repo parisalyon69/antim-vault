@@ -162,6 +162,7 @@ export default async function VaultDashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {sections.map((section) => (
+
           <Link
             key={section.href}
             href={section.href}
@@ -187,6 +188,18 @@ export default async function VaultDashboard() {
           </Link>
         ))}
       </div>
+
+      <p className="text-xs text-[#9ca3af] mt-10 leading-relaxed">
+        If something happens to you, your nominees can request access at{' '}
+        <a
+          href="https://vault.antim.services/emergency-access"
+          className="underline underline-offset-2 hover:text-[#6b7280] transition-colors"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          vault.antim.services/emergency-access
+        </a>
+      </p>
     </div>
   )
 }

@@ -58,7 +58,7 @@ export default function NomineesPage() {
 
     if (editing) {
       await supabase.from('vault_nominees').update(data).eq('id', editing.id)
-      await logActivity(supabase, vaultId, 'nominee_updated', { nominee_name: data.full_name })
+      await logActivity(supabase, vaultId, 'nominee_updated', `Updated nominee: ${data.full_name}`, { nominee_name: data.full_name })
       setSavedName(editing.full_name)
       setEditing(null)
     } else {
@@ -69,7 +69,7 @@ export default function NomineesPage() {
         .single()
 
       if (inserted) {
-        await logActivity(supabase, vaultId, 'nominee_added', {
+        await logActivity(supabase, vaultId, 'nominee_added', `Added nominee: ${data.full_name}`, {
           nominee_name: data.full_name,
           nominee_email: data.email,
         })
@@ -109,7 +109,7 @@ export default function NomineesPage() {
   async function handleDelete(id: string) {
     const nominee = nominees.find((n) => n.id === id)
     await supabase.from('vault_nominees').delete().eq('id', id)
-    await logActivity(supabase, vaultId!, 'nominee_deleted', { nominee_name: nominee?.full_name })
+    await logActivity(supabase, vaultId!, 'nominee_deleted', `Removed nominee: ${nominee?.full_name ?? 'Unknown'}`, { nominee_name: nominee?.full_name })
     setDeleteConfirm(null)
     setSavedName(null)
     await load()
@@ -249,11 +249,9 @@ export default function NomineesPage() {
         <div className="border border-[#e5e7eb] rounded-lg p-5 bg-[#FAFAF9] mt-4">
           <p className="text-sm text-[#1a1a1a] font-medium mb-1">Saved. Your family is a little more protected.</p>
           <p className="text-sm text-[#6b7280]">
-            When the time comes, <strong>{savedName}</strong> should contact us at{' '}
-            <a href="mailto:hello@antim.services" className="underline underline-offset-2">hello@antim.services</a>
-            {' '}or WhatsApp{' '}
-            <a href="https://wa.me/33745722899" className="underline underline-offset-2">+33 7 45 72 28 99</a>
-            {' '}with the death certificate. We will verify and provide access within 48 hours.
+            When the time comes, <strong>{savedName}</strong> can request access at{' '}
+            <a href="https://vault.antim.services/emergency-access" className="underline underline-offset-2">vault.antim.services/emergency-access</a>
+            {' '}with a death certificate. The Antim team will verify and respond within 2 business days.
           </p>
         </div>
       )}
