@@ -5,11 +5,18 @@ import { buildDimensions, calculateCompleteness } from '@/lib/vault/completeness
 import { VaultActivating } from './activating'
 import { VAULT_PLAN_LABEL } from '@/lib/constants'
 import VaultOnboardingTour from '@/components/vault/VaultOnboardingTour'
+import PaymentSuccessTracker from '@/components/vault/PaymentSuccessTracker'
 
-export default async function VaultDashboard() {
+export default async function VaultDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
+
+  const { success } = await searchParams
 
   const firstName = (user.user_metadata?.full_name as string | undefined)
     ?.split(' ')[0] ?? 'there'
@@ -118,6 +125,7 @@ export default async function VaultDashboard() {
 
   return (
     <div style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>
+      {success === 'true' && <PaymentSuccessTracker />}
       <div className="flex flex-wrap items-start justify-between gap-2 mb-1">
         <h1 className="text-2xl font-semibold text-[#1a1a1a]" style={{ fontFamily: 'var(--font-lora, Lora, Georgia, serif)' }}>
           Your vault, {firstName}

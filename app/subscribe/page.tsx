@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { trackEvent } from '@/lib/analytics'
 
 export default function SubscribePage() {
   const [error, setError] = useState<string | null>(null)
@@ -9,6 +10,7 @@ export default function SubscribePage() {
   useEffect(() => {
     async function startCheckout() {
       try {
+        trackEvent('payment_initiated', { amount: 999 })
         const res = await fetch('/api/vault/create-checkout', { method: 'POST' })
         const body = await res.json()
         if (!res.ok || !body.url) {

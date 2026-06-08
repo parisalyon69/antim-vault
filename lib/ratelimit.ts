@@ -32,11 +32,18 @@ export const releaseEmailLimiter = createLimiter(1, '24 h')
 // GET /release/view — 10 token validation attempts per IP per hour
 export const tokenIpLimiter = createLimiter(10, '1 h')
 
+// ── Emergency access ─────────────────────────────────────────────────────────
+
+// POST /api/emergency-access — 5 requests per IP per minute.
+// Prevents certificate upload spam while allowing legitimate grieving families
+// to retry quickly without waiting hours.
+export const emergencyAccessIpLimiter = createLimiter(5, '1 m')
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
-// POST /api/auth/reset-password — 5 requests per IP per hour.
+// POST /api/auth/reset-password — 10 requests per IP per minute.
 // Prevents enumeration attacks and Resend quota exhaustion.
-export const authResetLimiter = createLimiter(5, '1 h')
+export const authResetLimiter = createLimiter(10, '1 m')
 
 // ── Nominee notify ────────────────────────────────────────────────────────────
 

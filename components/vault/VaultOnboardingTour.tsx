@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useTransition, useState } from 'react'
 import Link from 'next/link'
+import { trackEvent } from '@/lib/analytics'
 
 interface TourStep {
   id: string
@@ -118,6 +119,7 @@ export default function VaultOnboardingTour({ hasDocument, hasAsset, hasNominee,
   if (dismissed) return null
 
   function handleDismiss() {
+    if (allDone) trackEvent('onboarding_completed')
     setDismissed(true)
     void persistOnboardingState(true)
     startTransition(() => router.refresh())

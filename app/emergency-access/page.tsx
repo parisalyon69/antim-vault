@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { trackEvent } from '@/lib/analytics'
 
 const ACCEPTED = 'application/pdf,image/jpeg,image/png,image/webp'
 const MAX_BYTES = 10 * 1024 * 1024
@@ -55,6 +56,7 @@ export default function EmergencyAccessPage() {
     const res = await fetch('/api/emergency-access', { method: 'POST', body: formData })
 
     if (res.ok) {
+      trackEvent('emergency_access_submitted')
       setStatus('success')
     } else {
       const body = await res.json().catch(() => ({}))

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Lora, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
+import { GoogleAnalytics } from '@next/third-parties/google'
 import './globals.css'
 
 const lora = Lora({
@@ -35,6 +36,9 @@ export default function RootLayout({
       className={`${lora.variable} ${inter.variable} h-full`}
     >
       <body className="min-h-full flex flex-col antialiased">{children}<Analytics /></body>
+      {process.env.NEXT_PUBLIC_GA_ID && (
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+      )}
     </html>
   )
 }

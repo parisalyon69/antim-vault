@@ -6,6 +6,7 @@ import AssetForm from '@/components/vault/AssetForm'
 import type { AssetCategory, VaultAsset } from '@/lib/types'
 import { ASSET_CATEGORY_LABELS } from '@/lib/types'
 import { logActivity } from '@/lib/activity'
+import { trackEvent } from '@/lib/analytics'
 
 const CATEGORIES: AssetCategory[] = [
   'bank_account',
@@ -76,6 +77,7 @@ export default function AssetsPage() {
     } else {
       const { error } = await supabase.from('vault_assets').insert({ ...data, vault_id: vaultId })
       if (!error) {
+        trackEvent('asset_added', { category: data.category })
         await logActivity(
           supabase, vaultId, 'asset_added',
           `Added asset: ${data.institution_name ?? ASSET_CATEGORY_LABELS[data.category as AssetCategory] ?? data.category}`,

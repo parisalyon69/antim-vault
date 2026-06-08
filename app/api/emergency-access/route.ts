@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { sendEmergencyAccessAlert, sendEmergencyAccessAcknowledgment } from '@/lib/email'
-import { releaseIpLimiter } from '@/lib/ratelimit'
+import { emergencyAccessIpLimiter } from '@/lib/ratelimit'
 
 // ── How to manually approve a request ────────────────────────────────────────
 //
@@ -58,8 +58,8 @@ export async function POST(request: Request) {
     request.headers.get('x-real-ip') ??
     'unknown'
 
-  if (releaseIpLimiter) {
-    const { success } = await releaseIpLimiter.limit(`emergency:ip:${ip}`)
+  if (emergencyAccessIpLimiter) {
+    const { success } = await emergencyAccessIpLimiter.limit(`emergency:ip:${ip}`)
     if (!success) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later or contact hello@antim.services.' },

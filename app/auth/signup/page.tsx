@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { trackEvent } from '@/lib/analytics'
 
 export default function SignupPage() {
   const supabase = createClient()
@@ -52,7 +53,11 @@ export default function SignupPage() {
       return
     }
 
-    // Session exists — go straight to Stripe checkout
+    // Signup succeeded with active session
+    trackEvent('vault_signup')
+
+    // Go straight to Stripe checkout
+    trackEvent('payment_initiated', { amount: 999 })
     const res = await fetch('/api/vault/create-checkout', { method: 'POST' })
     const body = await res.json()
 

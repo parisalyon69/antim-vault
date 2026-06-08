@@ -5,6 +5,7 @@ import { buildFilePath, uploadFile, formatFileSize } from '@/lib/vault/storage'
 import { createClient } from '@/lib/supabase/client'
 import type { DocumentCategory } from '@/lib/types'
 import { logActivity } from '@/lib/activity'
+import { trackEvent } from '@/lib/analytics'
 
 interface Props {
   vaultId: string
@@ -207,6 +208,7 @@ export default function DocumentUploader({ vaultId, userId, category, onUploaded
     })
 
     if (!dbError) {
+      trackEvent('document_uploaded', { category })
       await logActivity(supabase, vaultId, 'document_uploaded', `Uploaded document: ${file.name}`, {
         file_name: file.name,
         category,
@@ -240,10 +242,10 @@ export default function DocumentUploader({ vaultId, userId, category, onUploaded
       }
       try {
         finalFile = await buildPdfFromImages(scannedPages)
-        // Guard against assembled PDFs that exceed the 50MB Supabase storage limit
-        const MAX_PDF_BYTES = 50 * 1024 * 1024
+        // Guard against assembled PDFs that exceed the upload limit (45MB buffer below Supabase's 50MB)
+        const MAX_PDF_BYTES = 45 * 1024 * 1024
         if (finalFile.size > MAX_PDF_BYTES) {
-          setScanError('The combined PDF is too large (max 50 MB). Try removing some pages or re-scanning at lower quality.')
+          setScanError('File too large. Maximum size is 45 MB. Please compress or split the document.')
           return
         }
       } catch (err) {
