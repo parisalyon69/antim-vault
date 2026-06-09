@@ -13,7 +13,14 @@ export default async function VaultLayout({
 
   if (!user) redirect('/auth/login')
 
-  // Admin bypasses subscription check entirely
+  // Email verification backstop — block vault access until the user confirms
+  // their email. The proxy layer enforces this optimistically; this check is
+  // the authoritative server-component guard that cannot be bypassed.
+  if (!user.email_confirmed_at) redirect('/auth/verify-email')
+
+  // Admin bypass — ADMIN_EMAIL must be kept in sync with the actual admin
+  // account. This check skips the subscription gate entirely, so if the
+  // admin email ever changes, update lib/constants.ts accordingly.
   const isAdmin = user.email === ADMIN_EMAIL
   if (isAdmin) {
     return (

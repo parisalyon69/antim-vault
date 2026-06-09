@@ -37,6 +37,10 @@ export default function LetterEditor({ vaultId, initialEncrypted }: Props) {
 
       const { content } = await res.json()
       if (editorRef.current) {
+        // Self-XSS only: content is this user's own encrypted letter, decrypted
+        // server-side and returned only to the authenticated vault owner.
+        // If letter content is ever rendered to nominees or any other user in
+        // future, it MUST be sanitized with DOMPurify before assignment here.
         editorRef.current.innerHTML = content
         lastSavedRef.current = content
       }

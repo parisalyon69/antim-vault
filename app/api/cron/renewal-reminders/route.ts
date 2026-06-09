@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -86,9 +87,20 @@ async function logSent(
 // ── Handler ────────────────────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
-  // Verify the request comes from Vercel's cron scheduler
-  const authHeader = request.headers.get('authorization')
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Verify the request comes from Vercel's cron scheduler.
+  // crypto.timingSafeEqual prevents timing oracles on the secret value.
+  const authHeader = request.headers.get('authorization') ?? ''
+  const expected = `Bearer ${process.env.CRON_SECRET ?? ''}`
+  const headerBuf = Buffer.from(authHeader)
+  const expectedBuf = Buffer.from(expected)
+  const secretMissing = !process.env.CRON_SECRET
+  // Buffers must be the same byte-length for timingSafeEqual; pad the shorter
+  // one so the function does not throw, then reject on length mismatch anyway.
+  const maxLen = Math.max(headerBuf.length, expectedBuf.length)
+  const a = Buffer.concat([headerBuf, Buffer.alloc(maxLen - headerBuf.length)])
+  const b = Buffer.concat([expectedBuf, Buffer.alloc(maxLen - expectedBuf.length)])
+  const match = !secretMissing && headerBuf.length === expectedBuf.length && timingSafeEqual(a, b)
+  if (!match) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

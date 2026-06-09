@@ -53,7 +53,8 @@ export async function POST(request: Request) {
   const deceasedEmail = (formData.get('deceasedEmail') as string | null)?.trim().toLowerCase()
   const yourPhone = (formData.get('yourPhone') as string | null)?.trim()
   const yourEmail = (formData.get('yourEmail') as string | null)?.trim().toLowerCase()
-  const note = (formData.get('note') as string | null)?.trim() ?? ''
+  const rawNote = (formData.get('note') as string | null)?.trim() ?? ''
+  const note = rawNote.slice(0, 2000)
   const certFile = formData.get('certificate') as File | null
 
   if (!yourName || !relationship || !deceasedName || !deceasedEmail || !yourPhone || !yourEmail || !certFile) {

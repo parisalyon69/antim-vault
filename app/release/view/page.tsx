@@ -68,13 +68,21 @@ export default async function ReleaseViewPage({ searchParams }: Props) {
     supabase.from('vault_letters').select('encrypted_content').eq('vault_id', vaultId).single(),
   ])
 
-  // Mark token as used only after we have the data — prevents the token
-  // from being consumed if the data fetch fails mid-way.
+  // Atomic single-use token consumption — UPDATE ... WHERE used = false.
+  // Only proceeds if exactly one row is updated; a concurrent request that
+  // already consumed the token will find used = true and update zero rows,
+  // eliminating the TOCTOU race that existed with a separate read-then-write.
   const accessedAt = new Date().toISOString()
-  await supabase
+  const { data: consumed } = await supabase
     .from('vault_release_tokens')
     .update({ used: true, accessed_at: accessedAt })
     .eq('id', releaseToken.id)
+    .eq('used', false)
+    .select('id')
+
+  if (!consumed || consumed.length === 0) {
+    return <ErrorPage message="This link has already been used." />
+  }
 
   // Log vault access
   await logActivity(supabase, vaultId, 'vault_accessed_by_nominee', 'Vault accessed by nominee')

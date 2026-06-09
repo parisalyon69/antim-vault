@@ -5,7 +5,11 @@ import type { NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/vault'
+  // Validate next: must be an internal path (starts with / but not //).
+  // Rejects protocol-relative values like //evil.com that browsers treat as
+  // off-site redirects after the origin prefix is prepended.
+  const rawNext = searchParams.get('next') ?? '/vault'
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/vault'
 
   if (code) {
     const supabase = await createClient()
