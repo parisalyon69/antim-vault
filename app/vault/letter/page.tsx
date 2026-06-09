@@ -26,7 +26,7 @@ export default async function LetterPage() {
         Personal letter
       </h1>
       <p className="text-sm text-[#6b7280] mb-8 max-w-lg">
-        This letter is for the people you love. Write whatever feels right — where things are, what you want them to know, what you hope for them. Only they will read it.
+        This letter is for the people you love. Write whatever feels right — where things are, what you want them to know, what you hope for them.
       </p>
 
       <LetterEditor
@@ -35,7 +35,7 @@ export default async function LetterPage() {
       />
 
       <p className="text-xs text-[#6b7280] mt-6 max-w-lg leading-relaxed">
-        This letter is encrypted. Even we cannot read it. It will only be shown to your nominee after we verify their identity and receive the death certificate.
+        This letter is encrypted at rest. It will be shown to your nominee after we verify their identity and receive the death certificate.
       </p>
     </div>
   )

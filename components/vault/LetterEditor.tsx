@@ -1,8 +1,25 @@
 'use client'
 
 import { useRef, useState, useEffect, useCallback } from 'react'
+import DOMPurify from 'isomorphic-dompurify'
 import { createClient } from '@/lib/supabase/client'
 import { logActivity } from '@/lib/activity'
+
+// ── Letter HTML sanitizer ─────────────────────────────────────────────────────
+// Strict allowlist: only formatting tags the editor legitimately produces.
+// strip script, style, iframe, event-handler attributes, and javascript: URLs.
+// Applied at render (before innerHTML assignment) and at save (before encrypt).
+const LETTER_PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
+  ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'ul', 'ol', 'li',
+                 'h1', 'h2', 'h3', 'blockquote', 'a'],
+  ALLOWED_ATTR: ['href'],
+  // Restrict href to safe schemes only; strips javascript:, data:, vbscript: etc.
+  ALLOWED_URI_REGEXP: /^(?:https?:|mailto:)/i,
+}
+
+function sanitizeLetter(html: string): string {
+  return DOMPurify.sanitize(html, LETTER_PURIFY_CONFIG)
+}
 
 interface Props {
   vaultId: string
@@ -37,12 +54,12 @@ export default function LetterEditor({ vaultId, initialEncrypted }: Props) {
 
       const { content } = await res.json()
       if (editorRef.current) {
-        // Self-XSS only: content is this user's own encrypted letter, decrypted
-        // server-side and returned only to the authenticated vault owner.
-        // If letter content is ever rendered to nominees or any other user in
-        // future, it MUST be sanitized with DOMPurify before assignment here.
-        editorRef.current.innerHTML = content
-        lastSavedRef.current = content
+        // Sanitize before rendering: strips any tags or attributes outside the
+        // strict allowlist, including any unsanitized content already in storage.
+        // This is the load-bearing sanitization point.
+        const safe = sanitizeLetter(content)
+        editorRef.current.innerHTML = safe
+        lastSavedRef.current = safe
       }
     }
 
@@ -62,7 +79,8 @@ export default function LetterEditor({ vaultId, initialEncrypted }: Props) {
 
   const save = useCallback(async () => {
     if (!editorRef.current) return
-    const content = editorRef.current.innerHTML
+    // Sanitize before saving so only allowlisted HTML reaches the server and DB.
+    const content = sanitizeLetter(editorRef.current.innerHTML)
     if (content === lastSavedRef.current) return
 
     setSaveState('saving')

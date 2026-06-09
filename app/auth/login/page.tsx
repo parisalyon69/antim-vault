@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { safeInternalPath } from '@/lib/safe-redirect'
 import { Suspense } from 'react'
 
 function LoginForm() {
@@ -32,7 +33,7 @@ function LoginForm() {
       return
     }
 
-    const next = searchParams.get('next') ?? '/vault'
+    const next = safeInternalPath(searchParams.get('next'))
     router.push(next)
     router.refresh()
   }

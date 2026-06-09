@@ -8,53 +8,63 @@ import type { NextConfig } from "next";
 // Permissions-Policy:           disables unused browser APIs.
 // Strict-Transport-Security:    forces HTTPS for 2 years; enables preload list.
 // Content-Security-Policy:      restricts script, style, image, and network sources.
-//   - script-src includes googletagmanager.com and google-analytics.com for GA4.
-//   - connect-src includes google-analytics.com endpoints for GA4 measurement hits.
-//   - img-src allows https: broadly (Supabase storage URLs are not predictable).
-//   - frame-src limited to Stripe iframes.
-//   - No wildcard * in script-src or connect-src.
-const securityHeaders = [
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  // Belt-and-suspenders for older browsers; modern browsers rely on CSP instead.
-  { key: "X-XSS-Protection", value: "1; mode=block" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  {
-    key: "Permissions-Policy",
-    // camera=(self) is required for the mobile document scanner feature.
-    // All other unused APIs remain disabled.
-    value: "camera=(self), microphone=(), geolocation=(), payment=(self https://js.stripe.com)",
-  },
-  {
-    // HSTS: force HTTPS for 2 years, include subdomains, and opt in to preload list.
-    // Only effective over HTTPS — ignored on HTTP (local dev).
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
-  },
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      // Next.js inlines some scripts; Stripe.js and GA4 (via GTM) are external.
-      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com",
-      // Tailwind and component libraries may use inline styles.
-      "style-src 'self' 'unsafe-inline'",
-      // Images may come from Supabase storage or data URIs.
-      "img-src 'self' data: blob: https:",
-      // API calls: Supabase (REST + Realtime WS), Stripe, and GA4 measurement endpoints.
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://region1.google-analytics.com",
-      // Stripe checkout loads inside an iframe.
-      "frame-src https://js.stripe.com https://hooks.stripe.com",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "upgrade-insecure-requests",
-    ].join("; "),
-  },
-];
+//   - script-src includes googletagmanager.com for GA4; 'unsafe-inline' is required by
+//     Next.js for inline scripts and by GA4 tag injection. Removing it correctly requires
+//     nonce-based CSP wired through Next.js instrumentation — tracked as a follow-up.
+//   - connect-src uses the exact Supabase project origin (no wildcard *.supabase.co).
+//   - img-src uses the exact Supabase project origin instead of the broad https: wildcard.
 
 const nextConfig: NextConfig = {
   async headers() {
+    // Derive the exact Supabase origins from the public env var so the CSP is
+    // environment-specific and contains no wildcard subdomain.
+    // All Supabase services (REST, Auth, Storage, Realtime) share the same hostname.
+    const supabaseHttps = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co"
+    const supabaseWss = supabaseHttps.replace(/^https:/, "wss:")
+
+    const securityHeaders = [
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      // Belt-and-suspenders for older browsers; modern browsers rely on CSP instead.
+      { key: "X-XSS-Protection", value: "1; mode=block" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      {
+        key: "Permissions-Policy",
+        // camera=(self) is required for the mobile document scanner feature.
+        // All other unused APIs remain disabled.
+        value: "camera=(self), microphone=(), geolocation=(), payment=(self https://js.stripe.com)",
+      },
+      {
+        // HSTS: force HTTPS for 2 years, include subdomains, and opt in to preload list.
+        // Only effective over HTTPS — ignored on HTTP (local dev).
+        key: "Strict-Transport-Security",
+        value: "max-age=63072000; includeSubDomains; preload",
+      },
+      {
+        key: "Content-Security-Policy",
+        value: [
+          "default-src 'self'",
+          // Next.js inlines some scripts; Stripe.js and GA4 (via GTM) are external.
+          // TODO: replace 'unsafe-inline' with nonce-based CSP once Next.js
+          // instrumentation support is wired up — tracked as a follow-up.
+          "script-src 'self' 'unsafe-inline' https://js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com",
+          // Tailwind and component libraries may use inline styles.
+          "style-src 'self' 'unsafe-inline'",
+          // Images: self, data URIs, blob URLs, the exact Supabase project origin
+          // (covers Storage), and Google Analytics (used for GA4 measurement pixel).
+          `img-src 'self' data: blob: ${supabaseHttps} https://www.google-analytics.com`,
+          // API calls: exact Supabase https + wss origins, Stripe, GA4 measurement endpoints.
+          `connect-src 'self' ${supabaseHttps} ${supabaseWss} https://api.stripe.com https://www.google-analytics.com https://region1.google-analytics.com`,
+          // Stripe checkout and Elements load inside iframes.
+          "frame-src https://js.stripe.com https://hooks.stripe.com",
+          "object-src 'none'",
+          "base-uri 'self'",
+          "form-action 'self'",
+          "upgrade-insecure-requests",
+        ].join("; "),
+      },
+    ];
+
     return [
       {
         // Apply to every page and API route.

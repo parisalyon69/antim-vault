@@ -36,10 +36,10 @@ function baseHtml({
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Antim</title>
-  ${previewText ? `<meta name="description" content="${previewText}">` : ''}
+  ${previewText ? `<meta name="description" content="${esc(previewText)}">` : ''}
 </head>
 <body style="margin:0;padding:0;background-color:#F7F4ED;font-family:Arial,Helvetica,sans-serif;">
-  <div style="display:none;max-height:0;overflow:hidden;">${previewText}</div>
+  <div style="display:none;max-height:0;overflow:hidden;">${esc(previewText)}</div>
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F7F4ED;padding:32px 16px;">
     <tr>
       <td align="center">

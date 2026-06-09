@@ -81,7 +81,7 @@ export default function HomePage() {
               {
                 num: '3',
                 title: 'Leave a message',
-                desc: 'Write a personal letter to your family, encrypted and private. Only they will read it.',
+                desc: 'Write a personal letter to your family, encrypted at rest and access-controlled. Released only to the people you designate.',
               },
             ].map((step) => (
               <div key={step.num} className="flex-1 text-center sm:text-left">
@@ -107,7 +107,7 @@ export default function HomePage() {
           <div className="flex flex-col gap-4">
             {[
               'Documents encrypted with AES-256',
-              'Your personal letter is encrypted end-to-end. Even we cannot read it.',
+              'Your personal letter is encrypted at rest and stored securely. Released only to designated nominees after identity verification.',
               'Stored on secure servers in India',
               'Access released only after identity verification',
             ].map((point) => (
